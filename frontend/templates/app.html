@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JATS - Task Management</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .htmx-request { opacity: 0.6; }
+        .htmx-settling { opacity: 0.8; }
+        .htmx-swapping { opacity: 0; }
+        
+        /* Custom scrollbar */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 6px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 h-screen flex">
+    <!-- Navigation Sidebar -->
+    <div class="w-64 bg-white shadow-lg flex flex-col">
+        <!-- Header -->
+        <div class="p-6 border-b border-gray-200">
+            <h1 class="text-2xl font-bold text-gray-900">JATS</h1>
+            <p class="text-sm text-gray-600 mt-1">Welcome, <span id="username">{{.User.Username}}</span></p>
+        </div>
+        
+        <!-- Navigation -->
+        <nav class="flex-1 p-4 space-y-2">
+            <a href="#" 
+               hx-get="/app/tasks" 
+               hx-target="#main-content" 
+               hx-trigger="click"
+               onclick="setActiveNav(this); setActiveTaskView(document.querySelector('.task-view-item:first-child'), 'all')"
+               class="nav-item active flex items-center px-4 py-2 text-sm font-medium rounded-md bg-blue-100 text-blue-700">
+                <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                Tasks
+            </a>
+            
+            <a href="#" 
+               hx-get="/app/kanban" 
+               hx-target="#main-content" 
+               hx-trigger="click"
+               onclick="setActiveNav(this)"
+               class="nav-item flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                </svg>
+                Kanban
+            </a>
+            
+            <a href="#" 
+               hx-get="/app/reports" 
+               hx-target="#main-content" 
+               hx-trigger="click"
+               onclick="setActiveNav(this)"
+               class="nav-item flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+                Reports
+            </a>
+            
+            <a href="#" 
+               hx-get="/app/admin" 
+               hx-target="#main-content" 
+               hx-trigger="click"
+               onclick="setActiveNav(this)"
+               class="nav-item flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Admin
+            </a>
+        </nav>
+        
+        <!-- Footer -->
+        <div class="p-4 border-t border-gray-200">
+            <button hx-post="/logout" 
+                    hx-trigger="click"
+                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md">
+                <svg class="inline mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                </svg>
+                Logout
+            </button>
+        </div>
+    </div>
+
+    <!-- Saved Queries Sidebar -->
+    <div class="w-64 bg-gray-50 border-r border-gray-200 flex flex-col">
+        <!-- Header -->
+        <div class="p-4 border-b border-gray-200">
+            <div class="flex items-center justify-between">
+                <h2 class="text-lg font-semibold text-gray-900">Task Views</h2>
+                <button hx-get="/app/saved-queries/new" 
+                        hx-target="#saved-query-modal" 
+                        hx-trigger="click"
+                        onclick="showModal('saved-query-modal')"
+                        class="text-gray-400 hover:text-blue-600 hover:bg-blue-50 p-1 rounded">
+                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                    </svg>
+                </button>
+            </div>
+        </div>
+        
+        <!-- All Tasks Button -->
+        <div class="px-4 py-3">
+            <a href="#" 
+               hx-get="/app/tasks" 
+               hx-target="#main-content" 
+               hx-trigger="click"
+               onclick="setActiveTaskView(this, 'all')"
+               class="task-view-item active-task-view flex items-center px-3 py-2 text-sm font-medium rounded-md bg-blue-100 text-blue-700">
+                <svg class="mr-3 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                </svg>
+                All Tasks
+            </a>
+        </div>
+
+        <!-- Saved Queries -->
+        <div class="flex-1 px-4 pb-4">
+            <div class="mb-3">
+                <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wide">Saved Queries</h3>
+            </div>
+            <div id="saved-queries-list" hx-get="/app/saved-queries" hx-trigger="load" class="space-y-1">
+                <!-- Saved queries will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex">
+        <!-- Primary Content -->
+        <div id="main-content" class="flex-1 overflow-auto custom-scrollbar transition-all duration-300" hx-get="/app/tasks" hx-trigger="load">
+            <!-- Content will be loaded here -->
+        </div>
+        
+        <!-- Task Detail Panel (Hidden by default) -->
+        <div id="task-detail" class="hidden w-2/3 bg-white shadow-lg border-l border-gray-200 flex flex-col">
+            <!-- Task detail content will be loaded here -->
+        </div>
+        
+        <!-- Subtasks Panel (Hidden by default) -->
+        <div id="subtasks-panel" class="hidden w-80 bg-gray-50 border-l border-gray-200 flex flex-col">
+            <!-- Subtasks content will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Saved Query Modal -->
+    <div id="saved-query-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <!-- Modal content will be loaded here -->
+    </div>
+
+    <script>
+        // Navigation state management
+        function setActiveNav(element) {
+            // Remove active class from all nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active', 'bg-blue-100', 'text-blue-700');
+                item.classList.add('text-gray-700');
+            });
+            
+            // Add active class to clicked item
+            element.classList.add('active', 'bg-blue-100', 'text-blue-700');
+            element.classList.remove('text-gray-700');
+            
+            // Reset task views if switching to non-tasks section
+            const isTasksNav = element.textContent.trim().includes('Tasks');
+            if (!isTasksNav) {
+                document.querySelectorAll('.task-view-item').forEach(item => {
+                    item.classList.remove('active-task-view', 'bg-blue-100', 'text-blue-700');
+                    item.classList.add('text-gray-700');
+                });
+            }
+            
+            // Hide detail panels when switching sections
+            hideDetailPanels();
+        }
+
+        // Panel management
+        function hideDetailPanels() {
+            const mainContent = document.getElementById('main-content');
+            document.getElementById('task-detail').classList.add('hidden');
+            document.getElementById('subtasks-panel').classList.add('hidden');
+            // Restore main content to full width
+            mainContent.classList.remove('w-1/3');
+            mainContent.classList.add('flex-1');
+        }
+
+        function showTaskDetail(taskId) {
+            const detailPanel = document.getElementById('task-detail');
+            const subtasksPanel = document.getElementById('subtasks-panel');
+            const mainContent = document.getElementById('main-content');
+            
+            // Load task detail
+            htmx.ajax('GET', `/app/tasks/${taskId}/detail`, {
+                target: '#task-detail',
+                swap: 'innerHTML'
+            }).then(() => {
+                detailPanel.classList.remove('hidden');
+                // Shrink main content to make room for larger detail panel
+                mainContent.classList.remove('flex-1');
+                mainContent.classList.add('w-1/3');
+            });
+            
+            // Load subtasks
+            htmx.ajax('GET', `/app/tasks/${taskId}/subtasks`, {
+                target: '#subtasks-panel',
+                swap: 'innerHTML'
+            }).then(() => {
+                subtasksPanel.classList.remove('hidden');
+            });
+        }
+
+        // Handle logout response
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            if (evt.detail.requestConfig.path === '/logout') {
+                window.location.href = '/login';
+            }
+        });
+
+        // Handle task selection
+        document.body.addEventListener('click', function(evt) {
+            if (evt.target.matches('[data-task-id]')) {
+                const taskId = evt.target.getAttribute('data-task-id');
+                showTaskDetail(taskId);
+                evt.preventDefault();
+            }
+        });
+
+        // Set active task view (All Tasks or saved queries)
+        function setActiveTaskView(element, viewType) {
+            // Remove active class from all task view items and nav items
+            document.querySelectorAll('.task-view-item').forEach(item => {
+                item.classList.remove('active-task-view', 'bg-blue-100', 'text-blue-700');
+                item.classList.add('text-gray-700');
+            });
+            
+            // If this is coming from main nav, also reset nav items
+            if (viewType === 'all') {
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('active', 'bg-blue-100', 'text-blue-700');
+                    item.classList.add('text-gray-700');
+                });
+            }
+            
+            // Add active class to clicked view
+            element.classList.add('active-task-view', 'bg-blue-100', 'text-blue-700');
+            element.classList.remove('text-gray-700');
+            
+            // Hide detail panels when switching views
+            hideDetailPanels();
+        }
+
+        // Close modal when clicking outside for saved query modal
+        document.addEventListener('click', function(event) {
+            if (event.target.id === 'saved-query-modal') {
+                hideModal('saved-query-modal');
+            }
+        });
+
+        // Handle Enter key for subtask input
+        function handleSubtaskEnter(event, form) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const input = event.target;
+                const name = input.value.trim();
+                
+                if (name) {
+                    // Submit the form
+                    htmx.trigger(form, 'submit');
+                    // Clear the input after a brief delay to allow HTMX to process
+                    setTimeout(() => {
+                        input.value = '';
+                    }, 100);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

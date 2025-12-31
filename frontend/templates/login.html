@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JATS - Login</title>
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .htmx-request { opacity: 0.6; }
+        .htmx-settling { opacity: 0.8; }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen flex items-center justify-center">
+    <div class="max-w-md w-full space-y-8">
+        <div>
+            <h1 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
+                JATS
+            </h1>
+            <p class="mt-2 text-center text-sm text-gray-600">
+                Just Another To-do System
+            </p>
+        </div>
+        
+        <div class="mt-8 space-y-6">
+            <div id="login-error" class="hidden rounded-md bg-red-50 p-4">
+                <div class="flex">
+                    <div class="ml-3">
+                        <h3 class="text-sm font-medium text-red-800" id="error-title">
+                            Login Failed
+                        </h3>
+                        <div class="mt-2 text-sm text-red-700" id="error-message">
+                            <!-- Error message will be inserted here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <form hx-post="/login" 
+                  hx-target="#login-form" 
+                  hx-indicator="#login-spinner"
+                  id="login-form"
+                  class="space-y-6">
+                
+                <div class="rounded-md shadow-sm space-y-4">
+                    <div>
+                        <label for="username" class="block text-sm font-medium text-gray-700">
+                            Username
+                        </label>
+                        <input id="username" 
+                               name="username" 
+                               type="text" 
+                               autocomplete="username" 
+                               required 
+                               class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" 
+                               placeholder="Username">
+                    </div>
+                    
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-700">
+                            Password
+                        </label>
+                        <input id="password" 
+                               name="password" 
+                               type="password" 
+                               autocomplete="current-password" 
+                               required 
+                               class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" 
+                               placeholder="Password">
+                    </div>
+                    
+                    <div>
+                        <label for="totp_code" class="block text-sm font-medium text-gray-700">
+                            MFA Code (Optional)
+                        </label>
+                        <input id="totp_code" 
+                               name="totp_code" 
+                               type="text" 
+                               autocomplete="one-time-code" 
+                               pattern="[0-9]{6}" 
+                               maxlength="6"
+                               class="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 focus:z-10 sm:text-sm" 
+                               placeholder="123456">
+                    </div>
+                </div>
+
+                <div>
+                    <button type="submit" 
+                            class="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50">
+                        <span id="login-spinner" class="htmx-indicator absolute left-0 inset-y-0 flex items-center pl-3">
+                            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                        </span>
+                        Sign in
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        // Handle login responses
+        document.body.addEventListener('htmx:afterRequest', function(evt) {
+            if (evt.detail.xhr.status === 200) {
+                // Login successful, redirect will be handled by server
+                window.location.href = '/';
+            } else {
+                // Show error
+                const errorDiv = document.getElementById('login-error');
+                const errorMessage = document.getElementById('error-message');
+                
+                try {
+                    const response = JSON.parse(evt.detail.xhr.responseText);
+                    if (response.error) {
+                        errorMessage.textContent = response.error.message;
+                    } else {
+                        errorMessage.textContent = 'Invalid credentials';
+                    }
+                } catch (e) {
+                    errorMessage.textContent = 'Login failed';
+                }
+                
+                errorDiv.classList.remove('hidden');
+                
+                // Hide error after 5 seconds
+                setTimeout(() => {
+                    errorDiv.classList.add('hidden');
+                }, 5000);
+            }
+        });
+    </script>
+</body>
+</html>

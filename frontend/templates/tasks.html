@@ -1,0 +1,112 @@
+<!-- Tasks List View -->
+<div class="p-6 h-full">
+    <div class="flex justify-between items-center mb-6">
+        <div>
+            <h2 class="text-2xl font-bold text-gray-900">
+                {{if .SavedQuery}}{{.SavedQuery.Name}}{{else}}Tasks{{end}}
+            </h2>
+            {{if .SavedQuery}}
+            <p class="text-sm text-gray-600 mt-1">Saved query with filters applied</p>
+            {{end}}
+        </div>
+        <button hx-get="/app/tasks/new" 
+                hx-target="#task-form-modal" 
+                hx-trigger="click"
+                onclick="showModal('task-form-modal')"
+                class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md text-sm font-medium">
+            <svg class="inline mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+            </svg>
+            New Task
+        </button>
+    </div>
+
+    <!-- Filters -->
+    <div class="mb-6 flex flex-wrap gap-4">
+        <div class="flex items-center space-x-2">
+            <label class="text-sm font-medium text-gray-700">Status:</label>
+            <select hx-get="{{if .SavedQuery}}/app/saved-queries/{{.SavedQuery.ID}}/tasks{{else}}/app/tasks{{end}}" 
+                    hx-target="#tasks-list" 
+                    hx-trigger="change"
+                    hx-include="[name='priority'], [name='search']"
+                    hx-swap="innerHTML"
+                    name="status" 
+                    class="rounded-md border-gray-300 text-sm">
+                <option value="open" {{if eq .Filters.Status "open"}}selected{{end}}>Open</option>
+                <option value="in-progress" {{if eq .Filters.Status "in-progress"}}selected{{end}}>In Progress</option>
+                <option value="resolved" {{if eq .Filters.Status "resolved"}}selected{{end}}>Resolved</option>
+                <option value="closed" {{if eq .Filters.Status "closed"}}selected{{end}}>Closed</option>
+                <option value="">All</option>
+            </select>
+        </div>
+        
+        <div class="flex items-center space-x-2">
+            <label class="text-sm font-medium text-gray-700">Priority:</label>
+            <select hx-get="{{if .SavedQuery}}/app/saved-queries/{{.SavedQuery.ID}}/tasks{{else}}/app/tasks{{end}}" 
+                    hx-target="#tasks-list" 
+                    hx-trigger="change"
+                    hx-include="[name='status'], [name='search']"
+                    hx-swap="innerHTML"
+                    name="priority" 
+                    class="rounded-md border-gray-300 text-sm">
+                <option value="">All</option>
+                <option value="low" {{if eq .Filters.Priority "low"}}selected{{end}}>Low</option>
+                <option value="medium" {{if eq .Filters.Priority "medium"}}selected{{end}}>Medium</option>
+                <option value="high" {{if eq .Filters.Priority "high"}}selected{{end}}>High</option>
+                <option value="urgent" {{if eq .Filters.Priority "urgent"}}selected{{end}}>Urgent</option>
+            </select>
+        </div>
+        
+        <div class="flex-1 max-w-md">
+            <input type="text" 
+                   name="search"
+                   value="{{.Filters.Search}}"
+                   placeholder="Search tasks..."
+                   hx-get="{{if .SavedQuery}}/app/saved-queries/{{.SavedQuery.ID}}/tasks{{else}}/app/tasks{{end}}" 
+                   hx-target="#tasks-list" 
+                   hx-trigger="keyup changed delay:500ms"
+                   hx-include="[name='status'], [name='priority']"
+                   hx-swap="innerHTML"
+                   class="w-full rounded-md border-gray-300 text-sm">
+        </div>
+    </div>
+
+    <!-- Tasks List -->
+    <div id="tasks-list" 
+         class="space-y-3 overflow-auto custom-scrollbar" 
+         style="max-height: calc(100vh - 250px);"
+         hx-get="{{if .SavedQuery}}/app/saved-queries/{{.SavedQuery.ID}}/tasks{{else}}/app/tasks{{end}}"
+         hx-trigger="load"
+         hx-target="this"
+         hx-swap="innerHTML">
+        <!-- Tasks will be loaded here -->
+        <div class="text-center py-12">
+            <svg class="mx-auto h-12 w-12 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            <p class="mt-2 text-sm text-gray-500">Loading tasks...</p>
+        </div>
+    </div>
+</div>
+
+<!-- Task Form Modal -->
+<div id="task-form-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+    <!-- Modal content will be loaded here -->
+</div>
+
+<script>
+    function showModal(modalId) {
+        document.getElementById(modalId).classList.remove('hidden');
+    }
+    
+    function hideModal(modalId) {
+        document.getElementById(modalId).classList.add('hidden');
+    }
+    
+    // Close modal when clicking outside
+    document.addEventListener('click', function(event) {
+        if (event.target.id === 'task-form-modal') {
+            hideModal('task-form-modal');
+        }
+    });
+</script>
