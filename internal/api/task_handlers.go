@@ -7,6 +7,7 @@ import (
 
 	"github.com/soarinferret/jats/internal/models"
 	"github.com/soarinferret/jats/internal/services"
+	"github.com/soarinferret/jats/internal/utils"
 )
 
 type TaskHandlers struct {
@@ -89,8 +90,21 @@ func (h *TaskHandlers) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
+	// Parse creation date if provided
+	var createdAt time.Time
+	if req.Date != "" {
+		parsed, err := utils.ParseDate(req.Date)
+		if err != nil {
+			SendBadRequest(w, "Invalid date format", err.Error())
+			return
+		}
+		createdAt = parsed
+	} else {
+		createdAt = time.Now()
+	}
+
 	// Create task using service
-	task, err := h.taskService.CreateTask(req.Name)
+	task, err := h.taskService.CreateTaskWithDate(req.Name, createdAt)
 	if err != nil {
 		SendInternalError(w, "Failed to create task")
 		return

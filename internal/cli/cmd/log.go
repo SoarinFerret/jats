@@ -9,7 +9,8 @@ import (
 )
 
 var (
-	note string
+	logNote string
+	logDate string
 )
 
 var logCmd = &cobra.Command{
@@ -21,9 +22,11 @@ Duration formats:
   30m, 1h, 2h30m, 1.5h, or just 30 (assumes minutes)
 
 Examples:
-  jats log 123 30m                    # Log 30 minutes
-  jats log 123 1h --note "debugging"  # Log 1 hour with note
-  jats log 123 2.5h                   # Log 2.5 hours`,
+  jats log 123 30m                      # Log 30 minutes
+  jats log 123 1h --note "debugging"    # Log 1 hour with note
+  jats log 123 2.5h                     # Log 2.5 hours
+  jats log 123 1h -d -1d                # Log 1 hour yesterday
+  jats log 123 45m -d 2025-12-01        # Log 45 minutes on specific date`,
 	Args: cobra.ExactArgs(2),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		c := client.New()
@@ -40,7 +43,8 @@ Examples:
 
 		req := &client.LogTimeRequest{
 			Duration:    durationMinutes,
-			Description: note,
+			Description: logNote,
+			Date:        logDate,
 		}
 
 		err = c.LogTime(taskID, req)
@@ -51,8 +55,11 @@ Examples:
 		// Format duration for display
 		duration := time.Duration(durationMinutes) * time.Minute
 		fmt.Printf("✓ Logged %s to task #%d\n", formatDurationDisplay(duration), taskID)
-		if note != "" {
-			fmt.Printf("  Note: %s\n", note)
+		if logNote != "" {
+			fmt.Printf("  Note: %s\n", logNote)
+		}
+		if logDate != "" {
+			fmt.Printf("  Date: %s\n", logDate)
 		}
 
 		return nil
@@ -61,7 +68,8 @@ Examples:
 
 func init() {
 	rootCmd.AddCommand(logCmd)
-	logCmd.Flags().StringVarP(&note, "note", "n", "", "Note describing the work done")
+	logCmd.Flags().StringVarP(&logNote, "note", "n", "", "Note describing the work done")
+	logCmd.Flags().StringVarP(&logDate, "date", "d", "", "Entry date (-1d, +2w, 2025-12-01)")
 }
 
 func formatDurationDisplay(d time.Duration) string {

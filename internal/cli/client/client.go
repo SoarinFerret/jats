@@ -59,11 +59,13 @@ type CreateTaskRequest struct {
 	Name     string   `json:"name"`
 	Priority string   `json:"priority,omitempty"`
 	Tags     []string `json:"tags,omitempty"`
+	Date     string   `json:"date,omitempty"`
 }
 
 type LogTimeRequest struct {
 	Duration    int    `json:"duration"` // minutes
 	Description string `json:"description,omitempty"`
+	Date        string `json:"date,omitempty"`
 }
 
 func New() *Client {

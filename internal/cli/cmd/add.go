@@ -12,6 +12,7 @@ var (
 	priority  string
 	timeSpent string
 	completed bool
+	date      string
 )
 
 var addCmd = &cobra.Command{
@@ -26,13 +27,14 @@ Task names can include inline tags:
 Workflow flags:
   -t      - Log time immediately (30m, 1h, 2h30m, etc.)
   -c      - Mark task as resolved after creation
+  -d      - Set creation date (-1d, +2w, 2025-12-01)
 
 Examples:
   jats add Fix authentication bug
   jats add Update documentation +docs +urgent --priority high
   jats add @client1 restart +docker container -t 45m -c
-  jats add testing new +framework -t 30m -c
-  jats add "Fix bug with spaces" -t 1h (quotes optional but supported)`,
+  jats add testing new +framework -t 30m -c -d -1d
+  jats add "Fix bug with spaces" -t 1h -d 2025-12-01`,
 	Args: cobra.MinimumNArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
 		// Join all arguments to form the full task name
@@ -47,6 +49,7 @@ Examples:
 			Name:     taskName,
 			Priority: priority,
 			Tags:     tags,
+			Date:     date,
 		}
 
 		task, err := c.CreateTask(req)
@@ -72,6 +75,7 @@ Examples:
 			timeReq := &client.LogTimeRequest{
 				Duration:    durationMinutes,
 				Description: "Time logged during task creation",
+				Date:        date,
 			}
 
 			err = c.LogTime(task.ID, timeReq)
@@ -132,4 +136,5 @@ func init() {
 	addCmd.Flags().StringVarP(&priority, "priority", "p", "", "Priority level (low, medium, high)")
 	addCmd.Flags().StringVarP(&timeSpent, "time", "t", "", "Log time immediately (30m, 1h, 2h30m, etc.)")
 	addCmd.Flags().BoolVarP(&completed, "complete", "c", false, "Mark task as resolved after creation")
+	addCmd.Flags().StringVarP(&date, "date", "d", "", "Creation date (-1d, +2w, 2025-12-01)")
 }

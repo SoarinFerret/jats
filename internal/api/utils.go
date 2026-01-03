@@ -116,6 +116,7 @@ type TaskRequest struct {
 	Status      models.TaskStatus     `json:"status,omitempty"`
 	Priority    models.TaskPriority   `json:"priority,omitempty"`
 	Tags        []string              `json:"tags,omitempty"`
+	Date        string                `json:"date,omitempty"`
 }
 
 func (tr *TaskRequest) Validate() []string {
@@ -155,6 +156,7 @@ func (tr *TaskRequest) Validate() []string {
 type TimeEntryRequest struct {
 	Description string `json:"description,omitempty"`
 	Duration    int    `json:"duration"`
+	Date        string `json:"date,omitempty"`
 }
 
 func (ter *TimeEntryRequest) Validate() []string {

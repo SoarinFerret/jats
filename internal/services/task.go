@@ -20,10 +20,14 @@ func NewTaskService(repo *repository.TaskRepository, notification *NotificationS
 }
 
 func (s *TaskService) CreateTask(name string) (*models.Task, error) {
+	return s.CreateTaskWithDate(name, time.Now())
+}
+
+func (s *TaskService) CreateTaskWithDate(name string, createdAt time.Time) (*models.Task, error) {
 	task := &models.Task{
 		Name:      name,
 		Status:    models.TaskStatusOpen,
-		CreatedAt: time.Now(),
+		CreatedAt: createdAt,
 		UpdatedAt: time.Now(),
 	}
 
@@ -108,8 +112,12 @@ func (s *TaskService) DeleteTask(id uint) error {
 }
 
 func (s *TaskService) AddTimeEntry(taskID uint, entry *models.TimeEntry) error {
+	return s.AddTimeEntryWithDate(taskID, entry, time.Now())
+}
+
+func (s *TaskService) AddTimeEntryWithDate(taskID uint, entry *models.TimeEntry, createdAt time.Time) error {
 	entry.TaskID = taskID
-	entry.CreatedAt = time.Now()
+	entry.CreatedAt = createdAt
 	entry.UpdatedAt = time.Now()
 	
 	err := s.repo.AddTimeEntry(entry)

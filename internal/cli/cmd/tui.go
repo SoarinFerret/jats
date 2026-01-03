@@ -45,6 +45,10 @@ type TUI struct {
 	// Search fields
 	searchQuery string
 	searchActive bool
+	
+	// Layout fields
+	showSidebar bool
+	mainFlex    *tview.Flex
 }
 
 // NewTUI creates a new TUI instance
@@ -56,11 +60,22 @@ func NewTUI() *TUI {
 		pageSize:    20,
 		searchQuery: "",
 		searchActive: false,
+		showSidebar: true,  // Default to true, will be updated in Run()
 	}
 }
 
 // Run starts the TUI application
 func (t *TUI) Run() error {
+	// Check terminal size to determine default sidebar visibility
+	screen, err := tcell.NewScreen()
+	if err == nil {
+		if initErr := screen.Init(); initErr == nil {
+			width, _ := screen.Size()
+			t.showSidebar = width >= 120  // Hide sidebar on terminals smaller than 120 columns
+			screen.Fini()
+		}
+	}
+
 	// Initialize components
 	t.setupHeader()
 	t.setupSidebar()
@@ -128,18 +143,46 @@ func (t *TUI) setupStatusBar() {
 // setupLayout creates the main layout
 func (t *TUI) setupLayout() {
 	// Main content area
-	mainFlex := tview.NewFlex().SetDirection(tview.FlexColumn).
-		AddItem(t.sidebar, 0, 1, false).
-		AddItem(t.tasksTable, 0, 3, true)
+	t.mainFlex = tview.NewFlex().SetDirection(tview.FlexColumn)
+	t.updateMainLayout()
 
 	// Overall layout
 	layout := tview.NewFlex().SetDirection(tview.FlexRow).
 		AddItem(t.header, 3, 0, false).
-		AddItem(mainFlex, 0, 1, true).
+		AddItem(t.mainFlex, 0, 1, true).
 		AddItem(t.statusBar, 1, 0, false)
 
 	t.root = layout
 	t.app.SetRoot(layout, true)
+}
+
+// updateMainLayout updates the main flex layout based on sidebar visibility
+func (t *TUI) updateMainLayout() {
+	t.mainFlex.Clear()
+	
+	if t.showSidebar {
+		t.mainFlex.AddItem(t.sidebar, 0, 1, false)
+		t.mainFlex.AddItem(t.tasksTable, 0, 3, true)
+	} else {
+		t.mainFlex.AddItem(t.tasksTable, 0, 1, true)
+	}
+}
+
+// toggleSidebar toggles the visibility of the saved queries sidebar
+func (t *TUI) toggleSidebar() {
+	t.showSidebar = !t.showSidebar
+	t.updateMainLayout()
+	
+	// Update focus appropriately
+	if t.showSidebar {
+		t.setStatus("Sidebar shown. Press Q to toggle, Tab to switch focus")
+	} else {
+		t.setStatus("Sidebar hidden. Press Q to show")
+		// If sidebar was focused, move focus to tasks table
+		if t.app.GetFocus() == t.sidebar {
+			t.app.SetFocus(t.tasksTable)
+		}
+	}
 }
 
 // setupKeyBindings sets up context-aware key bindings
@@ -152,6 +195,9 @@ func (t *TUI) setupKeyBindings() {
 		case 'q':
 			t.app.Stop()
 			return nil
+		case 'Q':
+			t.toggleSidebar()
+			return nil
 		case 'A':
 			t.showCreateTaskModal()
 			return nil
@@ -162,13 +208,15 @@ func (t *TUI) setupKeyBindings() {
 			t.refreshData()
 			return nil
 		case tcell.KeyTab:
-			// Switch focus between sidebar and table
-			if focused == t.sidebar {
-				t.app.SetFocus(t.tasksTable)
-				t.updateStatusForPane("tasks")
-			} else {
-				t.app.SetFocus(t.sidebar)
-				t.updateStatusForPane("queries")
+			// Switch focus between sidebar and table (only if sidebar is visible)
+			if t.showSidebar {
+				if focused == t.sidebar {
+					t.app.SetFocus(t.tasksTable)
+					t.updateStatusForPane("tasks")
+				} else {
+					t.app.SetFocus(t.sidebar)
+					t.updateStatusForPane("queries")
+				}
 			}
 			return nil
 		}
@@ -295,10 +343,15 @@ func (t *TUI) selectCurrentQuery() {
 
 // updateStatusForPane updates the status bar based on which pane has focus
 func (t *TUI) updateStatusForPane(pane string) {
+	tabText := ""
+	if t.showSidebar {
+		tabText = " | [yellow]Tab[white]: Switch Panes"
+	}
+	
 	if pane == "tasks" {
-		t.statusBar.SetText("[yellow]A[white]: Add Task | [yellow]r[white]: Resolve/Reopen | [yellow]e[white]: Edit | [yellow]c[white]: Comment | [yellow]t[white]: Add Time | [yellow]/[white]: Search | [yellow]n/p[white]: Next/Prev Page | [yellow]x[white]: Clear Search | [yellow]Enter[white]: Details | [yellow]Tab[white]: Queries | [yellow]q[white]: Quit")
+		t.statusBar.SetText("[yellow]A[white]: Add Task | [yellow]r[white]: Resolve/Reopen | [yellow]e[white]: Edit | [yellow]c[white]: Comment | [yellow]t[white]: Add Time | [yellow]/[white]: Search | [yellow]n/p[white]: Next/Prev Page | [yellow]x[white]: Clear Search | [yellow]Enter[white]: Details" + tabText + " | [yellow]Q[white]: Toggle Sidebar | [yellow]q[white]: Quit")
 	} else if pane == "queries" {
-		t.statusBar.SetText("[yellow]A[white]: Add Task | [yellow]n[white]: New Query | [yellow]Enter[white]: Select Query | [yellow]Tab[white]: Tasks | [yellow]q[white]: Quit")
+		t.statusBar.SetText("[yellow]A[white]: Add Task | [yellow]n[white]: New Query | [yellow]Enter[white]: Select Query" + tabText + " | [yellow]Q[white]: Toggle Sidebar | [yellow]q[white]: Quit")
 	}
 }
 
@@ -653,13 +706,16 @@ func (t *TUI) showTimeDialog() {
 	form := tview.NewForm()
 	form.SetBorder(true).SetTitle(fmt.Sprintf("Add Time - %s", task.Name))
 	
-	var duration, description string
+	var duration, description, date string
 	
 	form.AddInputField("Duration", "", 20, nil, func(text string) {
 		duration = text
 	})
 	form.AddInputField("Description", "Time logged via TUI", 50, nil, func(text string) {
 		description = text
+	})
+	form.AddInputField("Date (optional)", "", 30, nil, func(text string) {
+		date = text
 	})
 	
 	originalRoot := t.root
@@ -683,6 +739,7 @@ func (t *TUI) showTimeDialog() {
 		timeReq := &client.LogTimeRequest{
 			Duration:    durationMinutes,
 			Description: description,
+			Date:        date,
 		}
 		
 		err = t.client.LogTime(task.ID, timeReq)
@@ -974,7 +1031,7 @@ func (t *TUI) showCreateTaskModal() {
 
 	// Create a flex container for the input
 	flex := tview.NewFlex().SetDirection(tview.FlexRow).
-		AddItem(tview.NewTextView().SetText("Create new task (supports +tag, @tag, -c, -t 15m):").SetTextAlign(tview.AlignCenter), 1, 0, false).
+		AddItem(tview.NewTextView().SetText("Create new task (supports +tag, @tag, -c, -t 15m, -d -1d):").SetTextAlign(tview.AlignCenter), 1, 0, false).
 		AddItem(tview.NewTextView(), 1, 0, false). // Spacer
 		AddItem(inputField, 1, 0, true).
 		AddItem(tview.NewTextView(), 1, 0, false). // Spacer
@@ -1004,6 +1061,7 @@ func (t *TUI) createTaskFromInput(input string) {
 	var shouldComplete bool
 	var timeSpent string
 	var priority string
+	var date string
 
 	// Split input into words and process flags
 	words := strings.Fields(input)
@@ -1019,12 +1077,18 @@ func (t *TUI) createTaskFromInput(input string) {
 		} else if word == "-p" && i+1 < len(words) {
 			priority = words[i+1]
 			i++ // Skip next word as it's the priority value
+		} else if word == "-d" && i+1 < len(words) {
+			date = words[i+1]
+			i++ // Skip next word as it's the date value
 		} else if strings.HasPrefix(word, "-t") && len(word) > 2 {
 			// Handle -t15m format
 			timeSpent = word[2:]
 		} else if strings.HasPrefix(word, "-p") && len(word) > 2 {
 			// Handle -phigh format
 			priority = word[2:]
+		} else if strings.HasPrefix(word, "-d") && len(word) > 2 {
+			// Handle -d-1d format
+			date = word[2:]
 		} else if !strings.HasPrefix(word, "-") {
 			filteredWords = append(filteredWords, word)
 		}
@@ -1046,6 +1110,7 @@ func (t *TUI) createTaskFromInput(input string) {
 		Name:     taskName,
 		Priority: priority,
 		Tags:     tags,
+		Date:     date,
 	}
 
 	task, err := t.client.CreateTask(req)
@@ -1067,6 +1132,7 @@ func (t *TUI) createTaskFromInput(input string) {
 		timeReq := &client.LogTimeRequest{
 			Duration:    durationMinutes,
 			Description: "Time logged during task creation",
+			Date:        date,
 		}
 
 		err = t.client.LogTime(task.ID, timeReq)

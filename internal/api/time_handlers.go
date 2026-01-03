@@ -6,6 +6,7 @@ import (
 
 	"github.com/soarinferret/jats/internal/models"
 	"github.com/soarinferret/jats/internal/services"
+	"github.com/soarinferret/jats/internal/utils"
 )
 
 type TimeHandlers struct {
@@ -64,16 +65,27 @@ func (h *TimeHandlers) CreateTimeEntry(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	
+	// Parse creation date if provided
+	var createdAt time.Time
+	if req.Date != "" {
+		parsed, err := utils.ParseDate(req.Date)
+		if err != nil {
+			SendBadRequest(w, "Invalid date format", err.Error())
+			return
+		}
+		createdAt = parsed
+	} else {
+		createdAt = time.Now()
+	}
+
 	// Create time entry
 	timeEntry := &models.TimeEntry{
 		TaskID:      taskID,
 		Description: req.Description,
 		Duration:    req.Duration,
-		CreatedAt:   time.Now(),
-		UpdatedAt:   time.Now(),
 	}
 	
-	if err := h.taskService.AddTimeEntry(taskID, timeEntry); err != nil {
+	if err := h.taskService.AddTimeEntryWithDate(taskID, timeEntry, createdAt); err != nil {
 		SendInternalError(w, "Failed to create time entry")
 		return
 	}
