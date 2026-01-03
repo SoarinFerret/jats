@@ -9,6 +9,8 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/soarinferret/jats/internal/models"
 	"github.com/soarinferret/jats/internal/services"
+	"sort"
+	"time"
 )
 
 // TaskHandler handles task-related frontend requests
@@ -130,6 +132,11 @@ func (h *TaskHandler) TaskListHandler(c *gin.Context) {
 		filteredTasks = append(filteredTasks, task)
 	}
 
+	// Sort by most recent activity (considering comments, time entries, and task updates)
+	sort.Slice(filteredTasks, func(i, j int) bool {
+		return h.getLastActivityTime(filteredTasks[i]).After(h.getLastActivityTime(filteredTasks[j]))
+	})
+
 	// Simple pagination
 	startIndex := (page - 1) * limit
 	endIndex := startIndex + limit
@@ -218,4 +225,19 @@ func (h *TaskHandler) TaskToggleCompleteHandler(c *gin.Context) {
 func (h *TaskHandler) renderSingleTask(c *gin.Context, task models.Task) {
 	c.Header("Content-Type", "text/html")
 	c.String(http.StatusOK, h.generateTaskCardHTML(task))
+}
+
+// getLastActivityTime calculates the most recent activity time for a task
+// considering task updates and subtask changes
+func (h *TaskHandler) getLastActivityTime(task models.Task) time.Time {
+	lastActivity := task.UpdatedAt
+	
+	// Check subtasks for more recent activity
+	for _, subtask := range task.Subtasks {
+		if subtask.UpdatedAt.After(lastActivity) {
+			lastActivity = subtask.UpdatedAt
+		}
+	}
+	
+	return lastActivity
 }

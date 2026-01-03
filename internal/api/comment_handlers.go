@@ -64,11 +64,11 @@ func (h *CommentHandlers) CreateComment(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	
-	// Create comment
+	// Create comment - all comments are now private (internal notes only)
 	comment := &models.Comment{
 		TaskID:    taskID,
 		Content:   req.Content,
-		IsPrivate: req.IsPrivate,
+		IsPrivate: true, // Force all comments to be private
 		FromEmail: req.FromEmail,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -109,12 +109,12 @@ func (h *CommentHandlers) UpdateComment(w http.ResponseWriter, r *http.Request) 
 	}
 	
 	// This would need repository method to update comment
-	// For now, return updated comment
+	// For now, return updated comment - all comments are now private (internal notes only)
 	comment := &models.Comment{
 		ID:        1, // placeholder
 		TaskID:    taskID,
 		Content:   req.Content,
-		IsPrivate: req.IsPrivate,
+		IsPrivate: true, // Force all comments to be private
 		FromEmail: req.FromEmail,
 		UpdatedAt: time.Now(),
 	}

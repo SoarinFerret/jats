@@ -25,125 +25,203 @@
         .custom-scrollbar::-webkit-scrollbar-thumb:hover {
             background: #a8a8a8;
         }
+        
+        /* Navbar collapsed state */
+        #nav-sidebar.collapsed {
+            width: 4rem !important;
+        }
+        
+        #nav-sidebar.collapsed #nav-header-content {
+            display: none;
+        }
+        
+        #nav-sidebar.collapsed .nav-text {
+            display: none;
+        }
+        
+        #nav-sidebar.collapsed .nav-icon {
+            margin-right: 0 !important;
+        }
+        
+        #nav-sidebar.collapsed #nav-content {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
+        
+        #nav-sidebar.collapsed #nav-footer {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
+        
+        #nav-sidebar.collapsed .nav-item {
+            justify-content: center;
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
+        
+        #nav-sidebar.collapsed #nav-footer button {
+            justify-content: center;
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+        }
     </style>
 </head>
 <body class="bg-gray-50 h-screen flex">
     <!-- Navigation Sidebar -->
-    <div class="w-64 bg-white shadow-lg flex flex-col">
+    <div id="nav-sidebar" class="w-64 bg-white shadow-lg flex flex-col transition-all duration-300">
         <!-- Header -->
         <div class="p-6 border-b border-gray-200">
-            <h1 class="text-2xl font-bold text-gray-900">JATS</h1>
-            <p class="text-sm text-gray-600 mt-1">Welcome, <span id="username">{{.User.Username}}</span></p>
+            <div class="flex items-center justify-between">
+                <div id="nav-header-content">
+                    <h1 class="text-2xl font-bold text-gray-900">JATS</h1>
+                    <p class="text-sm text-gray-600 mt-1">Welcome, <span id="username">{{.User.Username}}</span></p>
+                </div>
+                <button id="nav-toggle" onclick="toggleNavbar()" class="text-gray-400 hover:text-gray-600 p-1 rounded">
+                    <svg id="hamburger-icon" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    <svg id="close-icon" class="hidden h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
         </div>
         
         <!-- Navigation -->
-        <nav class="flex-1 p-4 space-y-2">
-            <a href="#" 
-               hx-get="/app/tasks" 
-               hx-target="#main-content" 
-               hx-trigger="click"
-               onclick="setActiveNav(this); setActiveTaskView(document.querySelector('.task-view-item:first-child'), 'all')"
-               class="nav-item active flex items-center px-4 py-2 text-sm font-medium rounded-md bg-blue-100 text-blue-700">
-                <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-                Tasks
-            </a>
+        <nav id="nav-content" class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <!-- Tasks Section -->
+            <div class="nav-section">
+                <a href="#" 
+                   hx-get="/app/tasks" 
+                   hx-target="#main-content" 
+                   hx-trigger="click"
+                   onclick="setActiveNav(this); setActiveTaskView(document.querySelector('.task-view-item:first-child'), 'all'); toggleNavSection('tasks-section')"
+                   class="nav-item active flex items-center px-4 py-2 text-sm font-medium rounded-md bg-blue-100 text-blue-700"
+                   title="Tasks">
+                    <svg class="nav-icon h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                    <span class="nav-text">Tasks</span>
+                    <svg class="nav-icon h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </a>
+                
+                <!-- Task Sub-navigation -->
+                <div id="tasks-section" class="nav-subsection pl-4 space-y-1 mt-2">
+                    <a href="#" 
+                       hx-get="/app/tasks" 
+                       hx-target="#main-content" 
+                       hx-trigger="click"
+                       onclick="setActiveTaskView(this, 'all')"
+                       class="task-view-item active-task-view flex items-center px-3 py-2 text-xs font-medium rounded-md bg-blue-50 text-blue-600">
+                        <svg class="mr-2 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                        </svg>
+                        All Tasks
+                    </a>
+                    <!-- Task Saved Queries will be loaded here -->
+                    <div id="task-saved-queries" 
+                         hx-get="/app/saved-queries" 
+                         hx-trigger="load"
+                         hx-vals='{"context": "tasks"}'>
+                        <!-- Loading saved queries... -->
+                    </div>
+                    <button hx-get="/app/saved-queries/new" 
+                            hx-target="#saved-query-modal" 
+                            hx-trigger="click"
+                            onclick="showModal('saved-query-modal')"
+                            class="w-full flex items-center px-3 py-2 text-xs font-medium text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-md">
+                        <svg class="mr-2 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                        </svg>
+                        New Query
+                    </button>
+                </div>
+            </div>
             
             <a href="#" 
                hx-get="/app/kanban" 
                hx-target="#main-content" 
                hx-trigger="click"
                onclick="setActiveNav(this)"
-               class="nav-item flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900">
-                <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               class="nav-item flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+               title="Kanban">
+                <svg class="nav-icon h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                 </svg>
-                Kanban
+                <span class="nav-text">Kanban</span>
             </a>
             
-            <a href="#" 
-               hx-get="/app/reports" 
-               hx-target="#main-content" 
-               hx-trigger="click"
-               onclick="setActiveNav(this)"
-               class="nav-item flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900">
-                <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-                Reports
-            </a>
+            <!-- Reports Section -->
+            <div class="nav-section">
+                <a href="#" 
+                   hx-get="/app/reports" 
+                   hx-target="#main-content" 
+                   hx-trigger="click"
+                   onclick="setActiveNav(this); toggleNavSection('reports-section')"
+                   class="nav-item flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+                   title="Reports">
+                    <svg class="nav-icon h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                    </svg>
+                    <span class="nav-text">Reports</span>
+                    <svg class="nav-icon h-4 w-4 ml-auto transform transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                    </svg>
+                </a>
+                
+                <!-- Reports Sub-navigation -->
+                <div id="reports-section" class="nav-subsection hidden pl-4 space-y-1 mt-2">
+                    <a href="#" 
+                       hx-get="/app/reports" 
+                       hx-target="#main-content" 
+                       hx-trigger="click"
+                       class="task-view-item flex items-center px-3 py-2 text-xs font-medium rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900">
+                        <svg class="mr-2 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                        </svg>
+                        All Tasks Report
+                    </a>
+                    <!-- Reports Saved Queries will be loaded here -->
+                    <div id="reports-saved-queries" 
+                         hx-get="/app/saved-queries" 
+                         hx-trigger="load"
+                         hx-vals='{"context": "reports"}'>
+                        <!-- Loading saved queries... -->
+                    </div>
+                </div>
+            </div>
             
             <a href="#" 
                hx-get="/app/admin" 
                hx-target="#main-content" 
                hx-trigger="click"
                onclick="setActiveNav(this)"
-               class="nav-item flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900">
-                <svg class="mr-3 h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+               class="nav-item flex items-center px-4 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900"
+               title="Admin">
+                <svg class="nav-icon h-5 w-5 mr-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                 </svg>
-                Admin
+                <span class="nav-text">Admin</span>
             </a>
         </nav>
         
         <!-- Footer -->
-        <div class="p-4 border-t border-gray-200">
+        <div id="nav-footer" class="p-4 border-t border-gray-200">
             <button hx-post="/logout" 
                     hx-trigger="click"
-                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md">
-                <svg class="inline mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    class="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md"
+                    title="Logout">
+                <svg class="nav-icon inline h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                 </svg>
-                Logout
+                <span class="nav-text">Logout</span>
             </button>
         </div>
     </div>
 
-    <!-- Saved Queries Sidebar -->
-    <div class="w-64 bg-gray-50 border-r border-gray-200 flex flex-col">
-        <!-- Header -->
-        <div class="p-4 border-b border-gray-200">
-            <div class="flex items-center justify-between">
-                <h2 class="text-lg font-semibold text-gray-900">Task Views</h2>
-                <button hx-get="/app/saved-queries/new" 
-                        hx-target="#saved-query-modal" 
-                        hx-trigger="click"
-                        onclick="showModal('saved-query-modal')"
-                        class="text-gray-400 hover:text-blue-600 hover:bg-blue-50 p-1 rounded">
-                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                    </svg>
-                </button>
-            </div>
-        </div>
-        
-        <!-- All Tasks Button -->
-        <div class="px-4 py-3">
-            <a href="#" 
-               hx-get="/app/tasks" 
-               hx-target="#main-content" 
-               hx-trigger="click"
-               onclick="setActiveTaskView(this, 'all')"
-               class="task-view-item active-task-view flex items-center px-3 py-2 text-sm font-medium rounded-md bg-blue-100 text-blue-700">
-                <svg class="mr-3 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
-                </svg>
-                All Tasks
-            </a>
-        </div>
-
-        <!-- Saved Queries -->
-        <div class="flex-1 px-4 pb-4">
-            <div class="mb-3">
-                <h3 class="text-xs font-medium text-gray-500 uppercase tracking-wide">Saved Queries</h3>
-            </div>
-            <div id="saved-queries-list" hx-get="/app/saved-queries" hx-trigger="load" class="space-y-1">
-                <!-- Saved queries will be loaded here -->
-            </div>
-        </div>
-    </div>
 
     <!-- Main Content Area -->
     <div class="flex-1 flex">
@@ -168,7 +246,110 @@
         <!-- Modal content will be loaded here -->
     </div>
 
+    <!-- Task Edit Modal -->
+    <div id="task-edit-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <!-- Modal content will be loaded here -->
+    </div>
+
+    <!-- Time Entry Modal -->
+    <div id="time-entry-modal" class="fixed inset-0 bg-gray-600 bg-opacity-50 hidden z-50">
+        <div class="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center">
+            <div class="bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:max-w-lg sm:w-full">
+                <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                    <div class="flex items-start">
+                        <div class="mx-auto flex-shrink-0 flex items-center justify-center h-12 w-12 rounded-full bg-green-100 sm:mx-0 sm:h-10 sm:w-10">
+                            <svg class="h-6 w-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                            </svg>
+                        </div>
+                        <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left flex-1">
+                            <h3 class="text-lg leading-6 font-medium text-gray-900" id="time-entry-modal-title">
+                                Add Time Entry
+                            </h3>
+                            <div class="mt-4">
+                                <form id="time-entry-form" class="space-y-4" onsubmit="event.preventDefault(); submitTimeEntry();">
+                                    <input type="hidden" id="time-entry-task-id" name="task_id">
+                                    
+                                    <div>
+                                        <label for="time-entry-duration" class="block text-sm font-medium text-gray-700">
+                                            Duration (minutes) *
+                                        </label>
+                                        <input type="number" 
+                                               id="time-entry-duration" 
+                                               name="duration" 
+                                               min="1" 
+                                               required
+                                               placeholder="60"
+                                               onkeydown="handleTimeEntryKeydown(event)"
+                                               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500">
+                                    </div>
+                                    
+                                    <div>
+                                        <label for="time-entry-description" class="block text-sm font-medium text-gray-700">
+                                            Description
+                                        </label>
+                                        <textarea id="time-entry-description" 
+                                                  name="description" 
+                                                  rows="3"
+                                                  placeholder="What did you work on..."
+                                                  onkeydown="handleTimeEntryKeydown(event)"
+                                                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-green-500 focus:ring-green-500"></textarea>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
+                    <button type="button" 
+                            onclick="submitTimeEntry()"
+                            class="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-green-600 text-base font-medium text-white hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:ml-3 sm:w-auto sm:text-sm">
+                        <span id="time-entry-submit-text">Add Time Entry</span>
+                        <svg id="time-entry-loading" class="hidden animate-spin ml-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                    </button>
+                    <button type="button" 
+                            onclick="hideTimeEntryModal()"
+                            class="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-green-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <script>
+        // Navbar toggle functionality
+        function toggleNavbar() {
+            const sidebar = document.getElementById('nav-sidebar');
+            const hamburgerIcon = document.getElementById('hamburger-icon');
+            const closeIcon = document.getElementById('close-icon');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            if (sidebar.classList.contains('collapsed')) {
+                hamburgerIcon.classList.add('hidden');
+                closeIcon.classList.remove('hidden');
+            } else {
+                hamburgerIcon.classList.remove('hidden');
+                closeIcon.classList.add('hidden');
+            }
+        }
+        
+        // Toggle navigation subsections
+        function toggleNavSection(sectionId) {
+            const section = document.getElementById(sectionId);
+            const isVisible = !section.classList.contains('hidden');
+            
+            if (isVisible) {
+                section.classList.add('hidden');
+            } else {
+                section.classList.remove('hidden');
+            }
+        }
+        
         // Navigation state management
         function setActiveNav(element) {
             // Remove active class from all nav items
@@ -274,6 +455,12 @@
             if (event.target.id === 'saved-query-modal') {
                 hideModal('saved-query-modal');
             }
+            if (event.target.id === 'task-edit-modal') {
+                hideModal('task-edit-modal');
+            }
+            if (event.target.id === 'time-entry-modal') {
+                hideTimeEntryModal();
+            }
         });
 
         // Handle Enter key for subtask input
@@ -292,6 +479,126 @@
                     }, 100);
                 }
             }
+        }
+
+        // Handle Ctrl+Enter for comment submission
+        function handleCommentKeydown(event, form) {
+            if (event.ctrlKey && event.key === 'Enter') {
+                event.preventDefault();
+                const textarea = event.target;
+                const content = textarea.value.trim();
+                
+                if (content) {
+                    // Submit the form
+                    htmx.trigger(form, 'submit');
+                }
+            }
+        }
+
+        // Time Entry Modal Functions
+        function showTimeEntryModal(taskId) {
+            document.getElementById('time-entry-task-id').value = taskId;
+            document.getElementById('time-entry-modal').classList.remove('hidden');
+            // Focus on duration input
+            setTimeout(() => {
+                document.getElementById('time-entry-duration').focus();
+            }, 100);
+        }
+
+        function handleTimeEntryKeydown(event) {
+            if (event.key === 'Enter') {
+                // For textarea, allow Ctrl+Enter or Shift+Enter for new lines
+                if (event.target.tagName.toLowerCase() === 'textarea') {
+                    if (event.ctrlKey || event.shiftKey) {
+                        return; // Allow new line
+                    }
+                }
+                
+                event.preventDefault();
+                submitTimeEntry();
+            } else if (event.key === 'Escape') {
+                event.preventDefault();
+                hideTimeEntryModal();
+            }
+        }
+
+        function hideTimeEntryModal() {
+            document.getElementById('time-entry-modal').classList.add('hidden');
+            // Reset form
+            document.getElementById('time-entry-form').reset();
+            // Reset button state
+            const submitBtn = document.querySelector('#time-entry-modal button[onclick="submitTimeEntry()"]');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+            }
+            // Hide loading state
+            document.getElementById('time-entry-loading').classList.add('hidden');
+            document.getElementById('time-entry-submit-text').textContent = 'Add Time Entry';
+        }
+
+        function submitTimeEntry() {
+            const form = document.getElementById('time-entry-form');
+            const taskId = document.getElementById('time-entry-task-id').value;
+            const durationInput = document.getElementById('time-entry-duration');
+            const duration = parseInt(durationInput.value);
+            const description = document.getElementById('time-entry-description').value;
+
+            // Validate
+            if (!duration || duration < 1) {
+                alert('Please enter a valid duration (minimum 1 minute)');
+                durationInput.focus();
+                return;
+            }
+
+            // Prevent double submission
+            const submitBtn = document.querySelector('#time-entry-modal button[onclick="submitTimeEntry()"]');
+            if (submitBtn.disabled) {
+                return;
+            }
+
+            // Show loading state and disable button
+            submitBtn.disabled = true;
+            document.getElementById('time-entry-loading').classList.remove('hidden');
+            document.getElementById('time-entry-submit-text').textContent = 'Adding...';
+
+            // Create time entry via frontend handler
+            fetch(`/app/tasks/${taskId}/time`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                },
+                body: new URLSearchParams({
+                    duration: duration,
+                    description: description
+                })
+            })
+            .then(response => {
+                if (response.ok) {
+                    // Success - hide modal and refresh timeline
+                    hideTimeEntryModal();
+                    // Refresh the timeline content
+                    htmx.ajax('GET', `/app/tasks/${taskId}/timeline`, {
+                        target: `#timeline-content-${taskId}`,
+                        swap: 'innerHTML'
+                    });
+                } else {
+                    response.json().then(data => {
+                        alert(data.error || 'Failed to add time entry. Please try again.');
+                    }).catch(() => {
+                        alert('Failed to add time entry. Please try again.');
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to add time entry. Please try again.');
+            })
+            .finally(() => {
+                // Hide loading state and re-enable button
+                submitBtn.disabled = false;
+                document.getElementById('time-entry-loading').classList.add('hidden');
+                document.getElementById('time-entry-submit-text').textContent = 'Add Time Entry';
+            });
         }
     </script>
 </body>

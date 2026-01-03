@@ -16,7 +16,7 @@ import (
 
 func TestEmailService_CleanSubject(t *testing.T) {
 	cfg := &config.Config{}
-	service := NewEmailService(nil, nil, nil, cfg)
+	service := NewEmailService(nil, nil, nil, nil, cfg)
 
 	tests := []struct {
 		name     string
@@ -46,7 +46,7 @@ func TestEmailService_CleanSubject(t *testing.T) {
 
 func TestEmailService_ReadPlainBody(t *testing.T) {
 	cfg := &config.Config{}
-	service := NewEmailService(nil, nil, nil, cfg)
+	service := NewEmailService(nil, nil, nil, nil, cfg)
 
 	testContent := "This is a test email body"
 	reader := strings.NewReader(testContent)
@@ -65,7 +65,7 @@ func TestEmailService_ProcessAttachment(t *testing.T) {
 	tempDir := t.TempDir()
 	storageService := NewStorageService(tempDir)
 	cfg := &config.Config{}
-	emailService := NewEmailService(nil, nil, storageService, cfg)
+	emailService := NewEmailService(nil, nil, nil, storageService, cfg)
 
 	// Create a mock multipart.Part
 	var buf bytes.Buffer
@@ -121,7 +121,7 @@ func TestEmailService_ProcessAttachment_Base64Encoded(t *testing.T) {
 	tempDir := t.TempDir()
 	storageService := NewStorageService(tempDir)
 	cfg := &config.Config{}
-	emailService := NewEmailService(nil, nil, storageService, cfg)
+	emailService := NewEmailService(nil, nil, nil, storageService, cfg)
 
 	// Create test data and encode it as base64
 	originalContent := "This is test attachment content for base64 test"
@@ -187,7 +187,7 @@ func TestEmailService_ParseMultipartMessage(t *testing.T) {
 	tempDir := t.TempDir()
 	storageService := NewStorageService(tempDir)
 	cfg := &config.Config{}
-	emailService := NewEmailService(nil, nil, storageService, cfg)
+	emailService := NewEmailService(nil, nil, nil, storageService, cfg)
 
 	// Create a multipart message with both text and attachment
 	var buf bytes.Buffer
@@ -242,7 +242,7 @@ func TestEmailService_ParseMultipartMessage(t *testing.T) {
 func TestEmailService_FindTaskByMessageID(t *testing.T) {
 	cfg := &config.Config{}
 	mockRepo := newMockTaskRepository()
-	service := NewEmailService(nil, mockRepo, nil, cfg)
+	service := NewEmailService(nil, mockRepo, nil, nil, cfg)
 
 	// Test with empty In-Reply-To headers
 	taskID, isUpdate := service.findTaskByMessageID([]string{}, "new-message@example.com")
@@ -322,7 +322,7 @@ func TestEmailService_ConnectIMAP_Configuration(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service := NewEmailService(nil, nil, nil, tt.config)
+			service := NewEmailService(nil, nil, nil, nil, tt.config)
 
 			// We can't actually connect without a real IMAP server,
 			// but we can test that the method exists and handles empty configs
@@ -339,12 +339,8 @@ func TestEmailService_ConnectIMAP_Configuration(t *testing.T) {
 }
 
 type mockTaskService struct {
-	createdTasks     []*models.Task
-	addedComments    []*models.Comment
-	addedSubscribers []struct {
-		taskID uint
-		email  string
-	}
+	createdTasks  []*models.Task
+	addedComments []*models.Comment
 }
 
 func (m *mockTaskService) CreateTask(name string) (*models.Task, error) {
@@ -380,13 +376,6 @@ func (m *mockTaskService) AddComment(taskID uint, comment *models.Comment) error
 	return nil
 }
 
-func (m *mockTaskService) AddSubscriber(taskID uint, email string) error {
-	m.addedSubscribers = append(m.addedSubscribers, struct {
-		taskID uint
-		email  string
-	}{taskID, email})
-	return nil
-}
 
 func (m *mockTaskService) AddAttachment(attachment *models.Attachment) error {
 	// For testing, just return nil
@@ -420,7 +409,7 @@ func TestEmailService_CreateNewTask(t *testing.T) {
 	mockTask := &mockTaskService{}
 	cfg := &config.Config{}
 
-	emailService := NewEmailService(mockTask, nil, storageService, cfg)
+	emailService := NewEmailService(mockTask, nil, nil, storageService, cfg)
 
 	// Create a mock IMAP message with body
 	envelope := &imap.Envelope{
@@ -455,19 +444,7 @@ func TestEmailService_CreateNewTask(t *testing.T) {
 		t.Errorf("Expected task name 'Test Task Subject', got %s", task.Name)
 	}
 
-	// Verify subscriber was added
-	if len(mockTask.addedSubscribers) != 1 {
-		t.Errorf("Expected 1 subscriber to be added, got %d", len(mockTask.addedSubscribers))
-	}
-
-	subscriber := mockTask.addedSubscribers[0]
-	if subscriber.email != "sender@example.com" {
-		t.Errorf("Expected subscriber email 'sender@example.com', got %s", subscriber.email)
-	}
-
-	if subscriber.taskID != task.ID {
-		t.Errorf("Expected subscriber taskID %d, got %d", task.ID, subscriber.taskID)
-	}
+	// Note: Subscriber functionality has been removed - JATS now only manages internal tasks
 }
 
 func TestEmailService_EmailConfigValidation(t *testing.T) {
@@ -525,7 +502,7 @@ func TestEmailService_EmailConfigValidation(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service := NewEmailService(nil, nil, nil, tt.config)
+			service := NewEmailService(nil, nil, nil, nil, tt.config)
 
 			// Basic validation - check if required fields are present
 			hasRequiredFields := tt.config.Email.IMAPHost != "" &&

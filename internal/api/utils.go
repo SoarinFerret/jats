@@ -90,17 +90,23 @@ func ParseJSON(r *http.Request, v interface{}) error {
 
 // GetIDFromPath extracts ID parameter from URL path
 func GetIDFromPath(r *http.Request) (uint, error) {
-	idStr := r.PathValue("id")
-	if idStr == "" {
-		return 0, nil
+	// Since we're using gin.WrapF, we need to manually parse the URL path
+	// Expected paths: /api/v1/tasks/{id}, /api/v1/saved-queries/{id}, etc.
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+	
+	// Find the numeric ID part - it should be after "/tasks" or "/saved-queries"
+	for i, part := range parts {
+		if (part == "tasks" || part == "saved-queries") && i+1 < len(parts) {
+			idStr := parts[i+1]
+			// Check if this part is actually an ID and not another path segment
+			if id, err := strconv.ParseUint(idStr, 10, 32); err == nil {
+				return uint(id), nil
+			}
+		}
 	}
 	
-	id, err := strconv.ParseUint(idStr, 10, 32)
-	if err != nil {
-		return 0, err
-	}
-	
-	return uint(id), nil
+	return 0, nil
 }
 
 // ValidateTaskRequest validates task creation/update request

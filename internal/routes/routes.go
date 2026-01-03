@@ -44,6 +44,7 @@ func SetupRoutes(taskService *services.TaskService, authService *services.AuthSe
 	tagHandlers := api.NewTagHandlers(taskService)
 	searchHandlers := api.NewSearchHandlers(taskService)
 	savedQueryHandlers := api.NewSavedQueryHandlers(taskService)
+	summaryHandlers := api.NewSummaryHandlers(taskService)
 	authHandlers := api.NewAuthHandlers(authService)
 
 	// Initialize frontend handlers
@@ -70,6 +71,8 @@ func SetupRoutes(taskService *services.TaskService, authService *services.AuthSe
 		appRoutes.GET("/tasks", frontendHandler.Tasks.TaskListHandler)
 		appRoutes.GET("/tasks/new", frontendHandler.Tasks.NewTaskFormHandler)
 		appRoutes.POST("/tasks", frontendHandler.Tasks.CreateTaskHandler)
+		appRoutes.GET("/tasks/:id/edit", frontendHandler.Tasks.EditTaskFormHandler)
+		appRoutes.PUT("/tasks/:id", frontendHandler.Tasks.UpdateTaskHandler)
 		appRoutes.POST("/tasks/:id/toggle-complete", frontendHandler.Tasks.TaskToggleCompleteHandler)
 		appRoutes.GET("/tasks/:id/detail", frontendHandler.Tasks.TaskDetailHandler)
 		appRoutes.GET("/tasks/:id/subtasks", frontendHandler.Tasks.TaskSubtasksHandler)
@@ -80,8 +83,15 @@ func SetupRoutes(taskService *services.TaskService, authService *services.AuthSe
 		appRoutes.POST("/saved-queries", frontendHandler.Saved.CreateSavedQueryHandler)
 		appRoutes.GET("/saved-queries/:id/tasks", frontendHandler.SavedQueryTasksHandler)
 
+		// Report routes
+		appRoutes.GET("/reports", frontendHandler.Reports.ReportPageHandler)
+
 		// Comment routes
 		appRoutes.POST("/tasks/:id/comments", frontendHandler.Tasks.AddTaskCommentHandler)
+		appRoutes.GET("/tasks/:id/timeline", frontendHandler.Tasks.TaskTimelineHandler)
+		
+		// Time entry routes
+		appRoutes.POST("/tasks/:id/time", frontendHandler.Tasks.AddTimeEntryHandler)
 
 		// Subtask routes
 		appRoutes.POST("/tasks/:id/subtasks", frontendHandler.Tasks.AddSubtaskHandler)
@@ -169,6 +179,9 @@ func SetupRoutes(taskService *services.TaskService, authService *services.AuthSe
 		api.GET("/search", authMiddleware.RequirePermission(models.PermissionReadTasks), gin.WrapF(searchHandlers.Search))
 		api.GET("/kanban", authMiddleware.RequirePermission(models.PermissionReadTasks), gin.WrapF(searchHandlers.GetKanban))
 		api.GET("/kanban/:tag", authMiddleware.RequirePermission(models.PermissionReadTasks), gin.WrapF(searchHandlers.GetKanbanByTag))
+
+		// Summary endpoints
+		api.GET("/summary/tasks", authMiddleware.RequirePermission(models.PermissionReadTasks), gin.WrapF(summaryHandlers.GetTaskSummary))
 	}
 
 	return router

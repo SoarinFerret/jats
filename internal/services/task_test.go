@@ -278,38 +278,6 @@ func TestTaskService_AddComment(t *testing.T) {
 	}
 }
 
-func TestTaskService_AddSubscriber(t *testing.T) {
-	db := setupTestDB(t)
-	repo := repository.NewTaskRepository(db)
-	service := NewTaskService(repo, nil)
-
-	// Create a task
-	task, err := service.CreateTask("Task with Subscriber")
-	if err != nil {
-		t.Fatalf("Failed to create task: %v", err)
-	}
-
-	// Add subscriber
-	email := "subscriber@example.com"
-	err = service.AddSubscriber(task.ID, email)
-	if err != nil {
-		t.Errorf("Failed to add subscriber: %v", err)
-	}
-
-	// Verify subscriber was added
-	subscribers, err := repo.GetSubscribers(task.ID)
-	if err != nil {
-		t.Errorf("Failed to get subscribers: %v", err)
-	}
-
-	if len(subscribers) != 1 {
-		t.Errorf("Expected 1 subscriber, got %d", len(subscribers))
-	}
-
-	if subscribers[0].Email != email {
-		t.Errorf("Expected email %s, got %s", email, subscribers[0].Email)
-	}
-}
 
 type mockNotificationService struct {
 	taskCreatedCalls   int

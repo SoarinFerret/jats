@@ -28,7 +28,11 @@ func (r *TaskRepository) GetByID(id uint) (*models.Task, error) {
 
 func (r *TaskRepository) GetAll() ([]*models.Task, error) {
 	var tasks []*models.Task
-	err := r.db.Preload("Subtasks").Find(&tasks).Error
+	// Sort by most recent activity - basic sorting by task updated_at
+	err := r.db.Preload("Subtasks").
+		Preload("TimeEntries").
+		Order("updated_at DESC").
+		Find(&tasks).Error
 	return tasks, err
 }
 

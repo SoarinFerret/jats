@@ -76,9 +76,10 @@
          class="space-y-3 overflow-auto custom-scrollbar" 
          style="max-height: calc(100vh - 250px);"
          hx-get="{{if .SavedQuery}}/app/saved-queries/{{.SavedQuery.ID}}/tasks{{else}}/app/tasks{{end}}"
-         hx-trigger="load"
+         hx-trigger="load, every 60s"
          hx-target="this"
-         hx-swap="innerHTML">
+         hx-swap="innerHTML"
+         hx-include="[name='status'], [name='priority'], [name='search']">
         <!-- Tasks will be loaded here -->
         <div class="text-center py-12">
             <svg class="mx-auto h-12 w-12 text-gray-400 animate-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor">

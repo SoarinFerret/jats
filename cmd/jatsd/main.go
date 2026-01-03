@@ -268,7 +268,7 @@ func main() {
 	smtpService := services.NewSMTPService(&cfg.Email)
 
 	// Initialize notification service
-	notificationService := services.NewNotificationService(taskRepo, smtpService)
+	notificationService := services.NewNotificationService(taskRepo, authRepo, smtpService)
 
 	// Initialize services with notification support
 	taskService := services.NewTaskService(taskRepo, notificationService)
@@ -294,7 +294,7 @@ func main() {
 	// Initialize email service if email configuration is provided
 	var emailService *services.EmailService
 	if cfg.Email.IMAPHost != "" && cfg.Email.IMAPUsername != "" && cfg.Email.IMAPPassword != "" {
-		emailService = services.NewEmailService(taskService, taskRepo, storageService, cfg)
+		emailService = services.NewEmailService(taskService, taskRepo, authRepo, storageService, cfg)
 		log.Printf("Initialized email service for %s@%s:%s", cfg.Email.IMAPUsername, cfg.Email.IMAPHost, cfg.Email.IMAPPort)
 
 		// Start email polling in a separate goroutine

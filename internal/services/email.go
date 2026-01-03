@@ -23,7 +23,6 @@ type TaskServiceInterface interface {
 	CreateTask(name string) (*models.Task, error)
 	CreateTaskFromEmail(name, emailMessageID string) (*models.Task, error)
 	AddComment(taskID uint, comment *models.Comment) error
-	AddSubscriber(taskID uint, email string) error
 	AddAttachment(attachment *models.Attachment) error
 }
 
@@ -32,17 +31,24 @@ type TaskRepositoryInterface interface {
 	GetByEmailMessageID(messageID string) (*models.Task, error)
 }
 
+// AuthRepositoryInterface defines the interface for user validation
+type AuthRepositoryInterface interface {
+	GetUserByEmail(email string) (*models.User, error)
+}
+
 type EmailService struct {
 	taskService    TaskServiceInterface
 	taskRepository TaskRepositoryInterface
+	authRepository AuthRepositoryInterface
 	storageService *StorageService
 	config         *config.Config
 }
 
-func NewEmailService(taskService TaskServiceInterface, taskRepository TaskRepositoryInterface, storageService *StorageService, cfg *config.Config) *EmailService {
+func NewEmailService(taskService TaskServiceInterface, taskRepository TaskRepositoryInterface, authRepository AuthRepositoryInterface, storageService *StorageService, cfg *config.Config) *EmailService {
 	return &EmailService{
 		taskService:    taskService,
 		taskRepository: taskRepository,
+		authRepository: authRepository,
 		storageService: storageService,
 		config:         cfg,
 	}
@@ -162,6 +168,13 @@ func (s *EmailService) processMessage(msg *imap.Message) error {
 		from = msg.Envelope.From[0].Address()
 	}
 
+	// Validate that sender is a JATS user
+	user, err := s.authRepository.GetUserByEmail(from)
+	if err != nil || user == nil {
+		fmt.Printf("Ignoring email from non-JATS user: %s\n", from)
+		return nil // Silently ignore emails from non-users
+	}
+
 	// Check if this is a reply to an existing task using In-Reply-To or References headers
 	taskID, isUpdate := s.findTaskByMessageID([]string{msg.Envelope.InReplyTo}, msg.Envelope.MessageId)
 
@@ -210,13 +223,13 @@ func (s *EmailService) createNewTask(subject, from string, msg *imap.Message) er
 		return fmt.Errorf("failed to create task: %w", err)
 	}
 
-	// Add initial comment with body content
+	// Add initial comment with body content (now internal notes only)
 	var commentID *uint
 	if body != "" {
 		comment := &models.Comment{
 			Content:   body,
 			FromEmail: from,
-			IsPrivate: false,
+			IsPrivate: true, // Comments are now internal notes only
 		}
 		if err := s.taskService.AddComment(createdTask.ID, comment); err != nil {
 			return fmt.Errorf("failed to add initial comment: %w", err)
@@ -236,11 +249,6 @@ func (s *EmailService) createNewTask(subject, from string, msg *imap.Message) er
 		}
 	}
 
-	// Add email sender as subscriber
-	if err := s.taskService.AddSubscriber(createdTask.ID, from); err != nil {
-		return fmt.Errorf("failed to add subscriber: %w", err)
-	}
-
 	return nil
 }
 
@@ -251,13 +259,13 @@ func (s *EmailService) updateExistingTask(taskID uint, subject, from string, msg
 		return fmt.Errorf("failed to parse email content: %w", err)
 	}
 
-	// Add comment to existing task from email body
+	// Add comment to existing task from email body (internal notes only)
 	var commentID *uint
 	if body != "" {
 		comment := &models.Comment{
 			Content:   body,
 			FromEmail: from,
-			IsPrivate: false,
+			IsPrivate: true, // Comments are now internal notes only
 		}
 		if err := s.taskService.AddComment(taskID, comment); err != nil {
 			return fmt.Errorf("failed to add comment to task %d: %w", taskID, err)

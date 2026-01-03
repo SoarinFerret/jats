@@ -111,7 +111,39 @@ func (s *TaskService) AddTimeEntry(taskID uint, entry *models.TimeEntry) error {
 	entry.TaskID = taskID
 	entry.CreatedAt = time.Now()
 	entry.UpdatedAt = time.Now()
-	return s.repo.AddTimeEntry(entry)
+	
+	err := s.repo.AddTimeEntry(entry)
+	if err != nil {
+		return err
+	}
+	
+	// Get task to check current status and update
+	task, err := s.repo.GetByID(taskID)
+	if err != nil {
+		return err
+	}
+	
+	// If task status is open, change it to in-progress
+	// Do not change status if it's already resolved or closed
+	oldStatus := task.Status
+	if task.Status == models.TaskStatusOpen {
+		task.Status = models.TaskStatusInProgress
+	}
+	
+	// Update task's updated_at timestamp for proper sorting
+	task.UpdatedAt = time.Now()
+	
+	err = s.repo.Update(task)
+	if err != nil {
+		return err
+	}
+	
+	// Send status change notification if status changed
+	if s.notification != nil && oldStatus != task.Status {
+		go s.notification.NotifyStatusChanged(task, oldStatus, task.Status)
+	}
+	
+	return nil
 }
 
 func (s *TaskService) AddComment(taskID uint, comment *models.Comment) error {
@@ -124,8 +156,15 @@ func (s *TaskService) AddComment(taskID uint, comment *models.Comment) error {
 		return err
 	}
 
-	// Get task for notifications
+	// Get task for notifications and update its timestamp
 	task, err := s.repo.GetByID(taskID)
+	if err != nil {
+		return err
+	}
+	
+	// Update task's updated_at timestamp for proper sorting
+	task.UpdatedAt = time.Now()
+	err = s.repo.Update(task)
 	if err != nil {
 		return err
 	}
@@ -138,15 +177,6 @@ func (s *TaskService) AddComment(taskID uint, comment *models.Comment) error {
 	return nil
 }
 
-func (s *TaskService) AddSubscriber(taskID uint, email string) error {
-	subscriber := &models.TaskSubscriber{
-		TaskID:    taskID,
-		Email:     email,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
-	}
-	return s.repo.AddSubscriber(subscriber)
-}
 
 func (s *TaskService) CreateSavedQuery(query *models.SavedQuery) (*models.SavedQuery, error) {
 	query.CreatedAt = time.Now()
@@ -235,11 +265,34 @@ func (s *TaskService) AddSubtask(taskID uint, subtask *models.Subtask) error {
 	subtask.TaskID = taskID
 	subtask.CreatedAt = time.Now()
 	subtask.UpdatedAt = time.Now()
-	return s.repo.AddSubtask(subtask)
+	
+	err := s.repo.AddSubtask(subtask)
+	if err != nil {
+		return err
+	}
+	
+	// Update task's updated_at timestamp for proper sorting
+	task, err := s.repo.GetByID(taskID)
+	if err != nil {
+		return err
+	}
+	task.UpdatedAt = time.Now()
+	return s.repo.Update(task)
 }
 
 func (s *TaskService) ToggleSubtask(taskID uint, subtaskID uint) error {
-	return s.repo.ToggleSubtask(subtaskID)
+	err := s.repo.ToggleSubtask(subtaskID)
+	if err != nil {
+		return err
+	}
+	
+	// Update task's updated_at timestamp for proper sorting
+	task, err := s.repo.GetByID(taskID)
+	if err != nil {
+		return err
+	}
+	task.UpdatedAt = time.Now()
+	return s.repo.Update(task)
 }
 
 func (s *TaskService) DeleteSubtask(taskID uint, subtaskID uint) error {

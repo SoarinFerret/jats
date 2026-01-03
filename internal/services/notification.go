@@ -9,105 +9,65 @@ import (
 
 type NotificationService struct {
 	taskRepo    *repository.TaskRepository
+	authRepo    *repository.AuthRepository
 	smtpService *SMTPService
 }
 
-func NewNotificationService(taskRepo *repository.TaskRepository, smtpService *SMTPService) *NotificationService {
+func NewNotificationService(taskRepo *repository.TaskRepository, authRepo *repository.AuthRepository, smtpService *SMTPService) *NotificationService {
 	return &NotificationService{
 		taskRepo:    taskRepo,
+		authRepo:    authRepo,
 		smtpService: smtpService,
 	}
 }
 
 func (n *NotificationService) NotifyTaskCreated(task *models.Task) error {
-	subscribers, err := n.taskRepo.GetSubscribers(task.ID)
+	// Get all JATS users for notifications
+	users, err := n.authRepo.GetAllUsers()
 	if err != nil {
-		return fmt.Errorf("failed to get subscribers: %w", err)
+		return fmt.Errorf("failed to get JATS users: %w", err)
 	}
 
-	if len(subscribers) == 0 {
+	if len(users) == 0 {
 		return nil
 	}
 
 	subject := fmt.Sprintf("New Task: %s", task.Name)
 	content := n.buildTaskCreatedContent(task)
 
+	// Convert users to TaskSubscriber format for compatibility with SMTP service
 	var subs []models.TaskSubscriber
-	for _, sub := range subscribers {
-		subs = append(subs, *sub)
+	for _, user := range users {
+		if user.IsActive { // Only notify active users
+			subs = append(subs, models.TaskSubscriber{
+				Email: user.Email,
+			})
+		}
+	}
+
+	if len(subs) == 0 {
+		return nil
 	}
 
 	return n.smtpService.SendTaskNotification(task, subs, subject, content)
 }
 
 func (n *NotificationService) NotifyTaskUpdated(task *models.Task) error {
-	subscribers, err := n.taskRepo.GetSubscribers(task.ID)
-	if err != nil {
-		return fmt.Errorf("failed to get subscribers: %w", err)
-	}
-
-	if len(subscribers) == 0 {
-		return nil
-	}
-
-	subject := fmt.Sprintf("Task Updated: %s", task.Name)
-	content := n.buildTaskUpdatedContent(task)
-
-	var subs []models.TaskSubscriber
-	for _, sub := range subscribers {
-		subs = append(subs, *sub)
-	}
-
-	return n.smtpService.SendTaskNotification(task, subs, subject, content)
+	// For internal task management, task updates are not sent via email
+	// This functionality is reserved for task creation notifications only
+	return nil
 }
 
 func (n *NotificationService) NotifyCommentAdded(task *models.Task, comment *models.Comment) error {
-	subscribers, err := n.taskRepo.GetSubscribers(task.ID)
-	if err != nil {
-		return fmt.Errorf("failed to get subscribers: %w", err)
-	}
-
-	if len(subscribers) == 0 {
-		return nil
-	}
-
-	// Don't notify the person who added the comment
-	var filteredSubs []models.TaskSubscriber
-	for _, sub := range subscribers {
-		if comment.FromEmail != "" && sub.Email != comment.FromEmail {
-			filteredSubs = append(filteredSubs, *sub)
-		} else if comment.FromEmail == "" {
-			// Internal comment, notify all subscribers
-			filteredSubs = append(filteredSubs, *sub)
-		}
-	}
-
-	if len(filteredSubs) == 0 {
-		return nil
-	}
-
-	return n.smtpService.SendTaskUpdate(task, filteredSubs, comment)
+	// For internal task management, comments are internal notes only
+	// No email notifications are sent for comment additions
+	return nil
 }
 
 func (n *NotificationService) NotifyStatusChanged(task *models.Task, oldStatus, newStatus models.TaskStatus) error {
-	subscribers, err := n.taskRepo.GetSubscribers(task.ID)
-	if err != nil {
-		return fmt.Errorf("failed to get subscribers: %w", err)
-	}
-
-	if len(subscribers) == 0 {
-		return nil
-	}
-
-	subject := fmt.Sprintf("Task Status Changed: %s", task.Name)
-	content := n.buildStatusChangeContent(task, oldStatus, newStatus)
-
-	var subs []models.TaskSubscriber
-	for _, sub := range subscribers {
-		subs = append(subs, *sub)
-	}
-
-	return n.smtpService.SendTaskNotification(task, subs, subject, content)
+	// For internal task management, status changes are not sent via email
+	// This functionality is reserved for task creation notifications only
+	return nil
 }
 
 func (n *NotificationService) buildTaskCreatedContent(task *models.Task) string {

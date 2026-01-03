@@ -34,17 +34,42 @@ func (h *SavedQueryHandler) SavedQueriesListHandler(c *gin.Context) {
 		return
 	}
 
+	// Check context to determine link targets
+	context := c.PostForm("context")
+	if context == "" {
+		context = c.Query("context")
+	}
+	if context == "" {
+		context = "tasks" // default context
+	}
+
 	queriesHTML := ""
 	for _, query := range queries {
+		var linkTarget, linkURL string
+		var iconPath string
+		var onclickAction string
+
+		if context == "reports" {
+			linkTarget = "#main-content"
+			linkURL = fmt.Sprintf("/app/reports?query=%d", query.ID)
+			iconPath = "M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+			onclickAction = ""
+		} else {
+			linkTarget = "#main-content"
+			linkURL = fmt.Sprintf("/app/saved-queries/%d/tasks", query.ID)
+			iconPath = "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+			onclickAction = fmt.Sprintf("setActiveTaskView(this, 'query-%d')", query.ID)
+		}
+
 		queriesHTML += fmt.Sprintf(`
 		<a href="#"
-		   hx-get="/app/saved-queries/%d/tasks"
-		   hx-target="#main-content"
+		   hx-get="%s"
+		   hx-target="%s"
 		   hx-trigger="click"
-		   onclick="setActiveTaskView(this, 'query-%d')"
-		   class="task-view-item flex items-center px-3 py-2 text-sm font-medium rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 group">
-			<svg class="mr-3 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+		   onclick="%s"
+		   class="task-view-item flex items-center px-3 py-2 text-xs font-medium rounded-md text-gray-700 hover:bg-gray-100 hover:text-gray-900 group">
+			<svg class="mr-2 h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="%s" />
 			</svg>
 			<span class="flex-1 truncate">%s</span>
 			<button hx-delete="/api/v1/saved-queries/%d"
@@ -53,11 +78,11 @@ func (h *SavedQueryHandler) SavedQueriesListHandler(c *gin.Context) {
 					hx-confirm="Are you sure you want to delete this saved query?"
 					onclick="event.stopPropagation()"
 					class="opacity-0 group-hover:opacity-100 text-gray-400 hover:text-red-600 p-1 rounded">
-				<svg class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<svg class="h-2 w-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
 					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
 				</svg>
 			</button>
-		</a>`, query.ID, query.ID, query.Name, query.ID)
+		</a>`, linkURL, linkTarget, onclickAction, iconPath, query.Name, query.ID)
 	}
 
 	if len(queries) == 0 {

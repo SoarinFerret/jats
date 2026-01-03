@@ -20,6 +20,7 @@ type Handler struct {
 	Saved       *SavedQueryHandler
 	App         *AppHandler
 	Attachments *AttachmentHandler
+	Reports     *ReportHandler
 }
 
 // NewHandler creates a new frontend handler with all sub-handlers
@@ -36,6 +37,7 @@ func NewHandler(authService *services.AuthService, taskService *services.TaskSer
 	h.Saved = NewSavedQueryHandler(taskService, h.templates)
 	h.App = NewAppHandler(authService, h.templates)
 	h.Attachments = NewAttachmentHandler(taskService, "./attachments")
+	h.Reports = NewReportHandler(taskService, h.templates)
 
 	return h
 }
