@@ -456,6 +456,33 @@ func (c *Client) patch(endpoint string, body interface{}, response interface{}) 
 	return c.request("PATCH", endpoint, body, response)
 }
 
+func (c *Client) delete(endpoint string) error {
+	return c.request("DELETE", endpoint, nil, nil)
+}
+
+// Convenience methods for admin operations
+func (c *Client) Get(endpoint string) (map[string]interface{}, error) {
+	var response map[string]interface{}
+	err := c.get(endpoint, &response)
+	return response, err
+}
+
+func (c *Client) Post(endpoint string, body interface{}) (map[string]interface{}, error) {
+	var response map[string]interface{}
+	err := c.post(endpoint, body, &response)
+	return response, err
+}
+
+func (c *Client) Put(endpoint string, body interface{}) (map[string]interface{}, error) {
+	var response map[string]interface{}
+	err := c.put(endpoint, body, &response)
+	return response, err
+}
+
+func (c *Client) Delete(endpoint string) error {
+	return c.delete(endpoint)
+}
+
 func (c *Client) request(method, endpoint string, body interface{}, response interface{}) error {
 	var reqBody io.Reader
 

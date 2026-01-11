@@ -71,7 +71,7 @@ func setupTestAPI(t *testing.T) *TestData {
 	}
 
 	// Setup routes
-	handler := SetupRoutes(taskService, authService)
+	handler := SetupRoutes(taskService, authService, authRepo)
 
 	return &TestData{
 		Handler:     handler,

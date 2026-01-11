@@ -117,6 +117,7 @@ func (m *AuthMiddleware) extractSessionToken(r *http.Request) string {
 	if strings.HasPrefix(auth, "Bearer ") {
 		token := strings.TrimPrefix(auth, "Bearer ")
 		// Simple heuristic: session tokens are typically shorter than API keys
+		// API keys are 44 chars (base64 32 bytes), session tokens are 32 chars
 		if len(token) < 64 {
 			return token
 		}
@@ -137,6 +138,7 @@ func (m *AuthMiddleware) extractAPIKey(r *http.Request) string {
 	if strings.HasPrefix(auth, "Bearer ") {
 		token := strings.TrimPrefix(auth, "Bearer ")
 		// Simple heuristic: API keys are typically longer than session tokens
+		// API keys are 44 chars (base64 32 bytes), session tokens are 32 chars
 		if len(token) >= 64 {
 			return token
 		}
@@ -269,7 +271,7 @@ func (m *GinAuthMiddleware) RequireAuth() gin.HandlerFunc {
 		}
 		
 		// Add auth context to Gin context
-		c.Set("auth", authContext)
+		c.Set(string(AuthContextKey), authContext)
 		c.Next()
 	})
 }
@@ -317,7 +319,7 @@ func (m *GinAuthMiddleware) RequirePermission(permission string) gin.HandlerFunc
 		}
 		
 		// Add auth context to Gin context
-		c.Set("auth", authContext)
+		c.Set(string(AuthContextKey), authContext)
 		c.Next()
 	})
 }
@@ -349,6 +351,7 @@ func (m *GinAuthMiddleware) extractSessionTokenGin(c *gin.Context) string {
 	if strings.HasPrefix(auth, "Bearer ") {
 		token := strings.TrimPrefix(auth, "Bearer ")
 		// Simple heuristic: session tokens are typically shorter than API keys
+		// API keys are 44 chars (base64 32 bytes), session tokens are 32 chars
 		if len(token) < 64 {
 			return token
 		}
@@ -369,6 +372,7 @@ func (m *GinAuthMiddleware) extractAPIKeyGin(c *gin.Context) string {
 	if strings.HasPrefix(auth, "Bearer ") {
 		token := strings.TrimPrefix(auth, "Bearer ")
 		// Simple heuristic: API keys are typically longer than session tokens
+		// API keys are 44 chars (base64 32 bytes), session tokens are 32 chars
 		if len(token) >= 64 {
 			return token
 		}

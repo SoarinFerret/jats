@@ -9,10 +9,11 @@ import (
 	"github.com/soarinferret/jats/internal/frontend"
 	"github.com/soarinferret/jats/internal/middleware"
 	"github.com/soarinferret/jats/internal/models"
+	"github.com/soarinferret/jats/internal/repository"
 	"github.com/soarinferret/jats/internal/services"
 )
 
-func SetupRoutes(taskService *services.TaskService, authService *services.AuthService) http.Handler {
+func SetupRoutes(taskService *services.TaskService, authService *services.AuthService, authRepo *repository.AuthRepository) http.Handler {
 	// Set Gin mode
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
@@ -46,6 +47,7 @@ func SetupRoutes(taskService *services.TaskService, authService *services.AuthSe
 	savedQueryHandlers := api.NewSavedQueryHandlers(taskService)
 	summaryHandlers := api.NewSummaryHandlers(taskService)
 	authHandlers := api.NewAuthHandlers(authService)
+	ginAdminHandlers := api.NewGinAdminHandlers(authService, authRepo)
 
 	// Initialize frontend handlers
 	frontendHandler := frontend.NewHandler(authService, taskService)
@@ -182,6 +184,18 @@ func SetupRoutes(taskService *services.TaskService, authService *services.AuthSe
 
 		// Summary endpoints
 		api.GET("/summary/tasks", authMiddleware.RequirePermission(models.PermissionReadTasks), gin.WrapF(summaryHandlers.GetTaskSummary))
+
+		// Admin endpoints (require admin permission)
+		admin := api.Group("/admin", authMiddleware.RequirePermission(models.PermissionAdmin))
+		{
+			// User management endpoints
+			admin.GET("/users", ginAdminHandlers.GetAllUsers)
+			admin.POST("/users", ginAdminHandlers.CreateUser)
+			admin.GET("/users/:id", ginAdminHandlers.GetUser)
+			admin.PUT("/users/:id", ginAdminHandlers.UpdateUser)
+			admin.DELETE("/users/:id", ginAdminHandlers.DeleteUser)
+			admin.POST("/users/:id/reset-password", ginAdminHandlers.ResetUserPassword)
+		}
 	}
 
 	return router

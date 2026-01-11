@@ -250,10 +250,20 @@ func (s *AuthService) ValidateSession(sessionToken string) (*models.AuthContext,
 		fmt.Printf("Failed to update session last used: %v\n", err)
 	}
 	
+	// Determine permissions for session-based authentication
+	var permissions []string
+	if session.User.Username == "jats-admin" {
+		// Admin user gets admin permissions
+		permissions = models.AdminPermissions()
+	} else {
+		// Regular users get default permissions
+		permissions = models.DefaultPermissions()
+	}
+
 	return &models.AuthContext{
 		User:        &session.User,
 		Session:     session,
-		Permissions: models.DefaultPermissions(),
+		Permissions: permissions,
 		AuthMethod:  "session",
 	}, nil
 }
