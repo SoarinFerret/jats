@@ -300,14 +300,14 @@ func (t *TUI) selectCurrentQuery() {
 	if currentItem < 0 {
 		return
 	}
-	
+
 	// Trigger the selected function for the current item
 	t.sidebar.SetCurrentItem(currentItem)
-	
+
 	// The list item's selected function will be called automatically
 	// but we need to manually trigger it since Enter doesn't do that by default
 	_, selected := t.sidebar.GetItemText(currentItem)
-	
+
 	// Map the current item to our query selection logic
 	switch currentItem {
 	case 0: // All Active Tasks
@@ -321,20 +321,27 @@ func (t *TUI) selectCurrentQuery() {
 			t.selectedQuery = fmt.Sprintf("saved:%d", t.savedQueries[savedIndex].ID)
 		}
 	}
-	
+
 	// Reset pagination when changing query
 	t.currentPage = 0
-	
+
 	t.refreshTasksOnly()
 	if err := t.updateHeader(); err != nil {
 		t.setStatus(fmt.Sprintf("Error updating header: %v", err))
 	} else {
 		t.setStatus(fmt.Sprintf("Selected query: %s", selected))
 	}
-	
-	// Switch focus to tasks table after selecting query
-	t.app.SetFocus(t.tasksTable)
-	t.updateStatusForPane("tasks")
+
+	// Only switch focus to tasks table if there are tasks to display
+	// Otherwise keep focus on sidebar to avoid freeze
+	if len(t.tasks) > 0 {
+		t.app.SetFocus(t.tasksTable)
+		t.updateStatusForPane("tasks")
+	} else {
+		// Keep focus on sidebar when no tasks found
+		t.setStatus(fmt.Sprintf("No tasks found for query: %s", selected))
+		t.updateStatusForPane("queries")
+	}
 }
 
 // updateStatusForPane updates the status bar based on which pane has focus
@@ -569,29 +576,38 @@ func (t *TUI) populateTasksTable() {
 	for row := t.tasksTable.GetRowCount() - 1; row > 0; row-- {
 		t.tasksTable.RemoveRow(row)
 	}
-	
+
+	// If no tasks, clear selection
+	if len(t.tasks) == 0 {
+		t.tasksTable.SetSelectable(false, false)
+		return
+	}
+
+	// Enable selection when tasks are present
+	t.tasksTable.SetSelectable(true, false)
+
 	for i, task := range t.tasks {
 		row := i + 1
-		
+
 		// Complete status
 		completeSymbol := " "
 		if task.Status == "resolved" || task.Status == "closed" {
 			completeSymbol = "✓"
 		}
-		
+
 		// Calculate total time
 		totalTime := 0
 		for _, entry := range task.TimeEntries {
 			totalTime += entry.Duration
 		}
 		timeStr := tuiFormatDuration(totalTime)
-		
+
 		// Tags
 		tagsStr := strings.Join(task.Tags, ", ")
 		if tagsStr == "" {
 			tagsStr = "-"
 		}
-		
+
 		// Priority color
 		priorityColor := ""
 		switch task.Priority {
