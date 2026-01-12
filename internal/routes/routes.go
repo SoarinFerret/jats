@@ -13,7 +13,7 @@ import (
 	"github.com/soarinferret/jats/internal/services"
 )
 
-func SetupRoutes(taskService *services.TaskService, authService *services.AuthService, authRepo *repository.AuthRepository) http.Handler {
+func SetupRoutes(taskService *services.TaskService, authService *services.AuthService, authRepo *repository.AuthRepository, reportService *services.ReportService) http.Handler {
 	// Set Gin mode
 	gin.SetMode(gin.ReleaseMode)
 	router := gin.New()
@@ -46,6 +46,7 @@ func SetupRoutes(taskService *services.TaskService, authService *services.AuthSe
 	searchHandlers := api.NewSearchHandlers(taskService)
 	savedQueryHandlers := api.NewSavedQueryHandlers(taskService)
 	summaryHandlers := api.NewSummaryHandlers(taskService)
+	reportHandlers := api.NewReportHandlers(reportService)
 	authHandlers := api.NewAuthHandlers(authService)
 	ginAdminHandlers := api.NewGinAdminHandlers(authService, authRepo)
 
@@ -184,6 +185,12 @@ func SetupRoutes(taskService *services.TaskService, authService *services.AuthSe
 
 		// Summary endpoints
 		api.GET("/summary/tasks", authMiddleware.RequirePermission(models.PermissionReadTasks), gin.WrapF(summaryHandlers.GetTaskSummary))
+
+		// Report endpoints
+		reports := api.Group("/reports", authMiddleware.RequirePermission(models.PermissionReadTasks))
+		{
+			reports.GET("/time-breakdown", gin.WrapF(reportHandlers.GetTimeBreakdownReport))
+		}
 
 		// Admin endpoints (require admin permission)
 		admin := api.Group("/admin", authMiddleware.RequirePermission(models.PermissionAdmin))

@@ -273,6 +273,7 @@ func main() {
 	// Initialize services with notification support
 	taskService := services.NewTaskService(taskRepo, notificationService)
 	authService := services.NewAuthService(authRepo, nil)
+	reportService := services.NewReportService(taskRepo)
 
 	// Handle admin commands if provided
 	if resetPasswordUser != "" {
@@ -314,7 +315,7 @@ func main() {
 	}
 
 	// Setup routes and handlers with dependencies
-	mux := routes.SetupRoutes(taskService, authService, authRepo)
+	mux := routes.SetupRoutes(taskService, authService, authRepo, reportService)
 
 	// Start HTTP server
 	log.Println("==============================================")

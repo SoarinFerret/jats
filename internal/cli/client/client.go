@@ -264,6 +264,48 @@ type SavedQuery struct {
 	UpdatedAt    time.Time `json:"updated_at"`
 }
 
+type TimeBreakdownReport struct {
+	StartDate  time.Time            `json:"start_date"`
+	EndDate    time.Time            `json:"end_date"`
+	QueryNames []string             `json:"query_names"`
+	DailyData  []DailyTimeBreakdown `json:"daily_data"`
+	Totals     QueryTotals          `json:"totals"`
+}
+
+type DailyTimeBreakdown struct {
+	Date       string               `json:"date"`
+	TotalTime  int                  `json:"total_time"`
+	QueryTimes []QueryTimeBreakdown `json:"query_times"`
+	OtherTime  int                  `json:"other_time"`
+	OtherTags  []string             `json:"other_tags"`
+}
+
+type QueryTimeBreakdown struct {
+	QueryID   uint     `json:"query_id"`
+	QueryName string   `json:"query_name"`
+	Time      int      `json:"time"`
+	Tags      []string `json:"tags"`
+}
+
+type QueryTotals struct {
+	TotalTime   int          `json:"total_time"`
+	QueryTotals []QueryTotal `json:"query_totals"`
+	OtherTotal  OtherTotal   `json:"other_total"`
+}
+
+type QueryTotal struct {
+	QueryID    uint    `json:"query_id"`
+	QueryName  string  `json:"query_name"`
+	TotalTime  int     `json:"total_time"`
+	Percentage float64 `json:"percentage"`
+}
+
+type OtherTotal struct {
+	TotalTime  int      `json:"total_time"`
+	Percentage float64  `json:"percentage"`
+	Tags       []string `json:"tags"`
+}
+
 func (c *Client) GetTasks(filters *TaskFilters) ([]Task, error) {
 	query := url.Values{}
 	
@@ -498,6 +540,35 @@ func (c *Client) GetTaskSummary(savedQueryID *uint) (*TaskSummaryResponse, error
 
 	if !apiResp.Success {
 		return nil, fmt.Errorf("get task summary failed: %s", apiResp.Message)
+	}
+
+	return &apiResp.Data, nil
+}
+
+func (c *Client) GetTimeBreakdownReport(startDate, endDate, queryIDs, excludeTags string) (*TimeBreakdownReport, error) {
+	query := url.Values{}
+	query.Add("start_date", startDate)
+	query.Add("end_date", endDate)
+	query.Add("saved_query_ids", queryIDs)
+	if excludeTags != "" {
+		query.Add("excluded_tags", excludeTags)
+	}
+
+	endpoint := "/api/v1/reports/time-breakdown?" + query.Encode()
+
+	var apiResp struct {
+		Success bool                 `json:"success"`
+		Data    TimeBreakdownReport  `json:"data"`
+		Message string               `json:"message"`
+	}
+
+	err := c.get(endpoint, &apiResp)
+	if err != nil {
+		return nil, err
+	}
+
+	if !apiResp.Success {
+		return nil, fmt.Errorf("get time breakdown report failed: %s", apiResp.Message)
 	}
 
 	return &apiResp.Data, nil
