@@ -110,9 +110,9 @@ func (t *TUI) setupHeader() {
 func (t *TUI) setupSidebar() {
 	t.sidebar = tview.NewList()
 	t.sidebar.SetBorder(true).SetTitle("Saved Queries")
-	
+
 	// Set default selection (sidebar will be populated by loadSavedQueries)
-	t.selectedQuery = "open"
+	t.selectedQuery = "active"
 }
 
 // setupTasksTable creates the main tasks table
@@ -310,17 +310,13 @@ func (t *TUI) selectCurrentQuery() {
 	
 	// Map the current item to our query selection logic
 	switch currentItem {
-	case 0: // All Open Tasks
-		t.selectedQuery = "open"
-	case 1: // In Progress
-		t.selectedQuery = "in-progress"
-	case 2: // Resolved
+	case 0: // All Active Tasks
+		t.selectedQuery = "active"
+	case 1: // Resolved
 		t.selectedQuery = "resolved"
-	case 3: // All Tasks
-		t.selectedQuery = "all"
 	default:
-		// Saved query (currentItem - 4 since we have 4 default queries)
-		savedIndex := currentItem - 4
+		// Saved query (currentItem - 2 since we have 2 default queries)
+		savedIndex := currentItem - 2
 		if savedIndex >= 0 && savedIndex < len(t.savedQueries) {
 			t.selectedQuery = fmt.Sprintf("saved:%d", t.savedQueries[savedIndex].ID)
 		}
@@ -392,32 +388,31 @@ func (t *TUI) loadSavedQueries() error {
 	
 	// Clear existing sidebar and rebuild it
 	t.sidebar.Clear()
-	
+
 	// Re-add default queries first
-	t.sidebar.AddItem("All Open Tasks", "Show all open tasks", 'o', func() {
-		t.selectedQuery = "open"
+	t.sidebar.AddItem("All Active Tasks", "Show open and in-progress tasks", 'a', func() {
+		t.selectedQuery = "active"
 		t.refreshTasksOnly()
 	})
-	
-	t.sidebar.AddItem("In Progress", "Show tasks in progress", 'p', func() {
-		t.selectedQuery = "in-progress"
-		t.refreshTasksOnly()
-	})
-	
+
 	t.sidebar.AddItem("Resolved", "Show resolved tasks", 'r', func() {
 		t.selectedQuery = "resolved"
 		t.refreshTasksOnly()
 	})
 	
-	t.sidebar.AddItem("All Tasks", "Show all tasks", 'a', func() {
-		t.selectedQuery = "all"
-		t.refreshTasksOnly()
-	})
-	
 	// Add saved queries to sidebar after default ones
-	for _, sq := range savedQueries {
+	for i, sq := range savedQueries {
 		query := sq // capture for closure
-		t.sidebar.AddItem(query.Name, fmt.Sprintf("Tags: %s", strings.Join(query.IncludedTags, ", ")), 0, func() {
+
+		// Assign shortcuts 1-9 for the first 9 saved queries
+		var shortcut rune
+		if i < 9 {
+			shortcut = rune('1' + i)
+		} else {
+			shortcut = 0 // No shortcut for 10th and beyond
+		}
+
+		t.sidebar.AddItem(query.Name, fmt.Sprintf("Tags: %s", strings.Join(query.IncludedTags, ", ")), shortcut, func() {
 			t.selectedQuery = fmt.Sprintf("saved:%d", query.ID)
 			t.refreshTasksOnly()
 		})
@@ -432,14 +427,10 @@ func (t *TUI) loadSavedQueries() error {
 // restoreSidebarSelection restores the sidebar selection based on current selectedQuery
 func (t *TUI) restoreSidebarSelection() {
 	switch t.selectedQuery {
-	case "open":
+	case "active":
 		t.sidebar.SetCurrentItem(0)
-	case "in-progress":
-		t.sidebar.SetCurrentItem(1)
 	case "resolved":
-		t.sidebar.SetCurrentItem(2)
-	case "all":
-		t.sidebar.SetCurrentItem(3)
+		t.sidebar.SetCurrentItem(1)
 	default:
 		// Check if it's a saved query
 		if strings.HasPrefix(t.selectedQuery, "saved:") {
@@ -448,7 +439,7 @@ func (t *TUI) restoreSidebarSelection() {
 				// Find the saved query index
 				for i, sq := range t.savedQueries {
 					if sq.ID == uint(id) {
-						t.sidebar.SetCurrentItem(4 + i) // 4 default queries + saved query index
+						t.sidebar.SetCurrentItem(2 + i) // 2 default queries + saved query index
 						return
 					}
 				}
@@ -537,19 +528,17 @@ func (t *TUI) refreshTasksOnly() error {
 				}
 			}
 		}
+		// Saved queries default to showing only active tasks (open + in-progress)
+		filters.Status = []string{"open", "in-progress"}
 	} else {
 		// Handle default queries
 		switch t.selectedQuery {
-		case "open":
-			filters.Status = []string{"open"}
-		case "in-progress":
-			filters.Status = []string{"in-progress"}
+		case "active":
+			filters.Status = []string{"open", "in-progress"}
 		case "resolved":
 			filters.Status = []string{"resolved"}
-		case "all":
-			// No status filter for all tasks
 		default:
-			filters.Status = []string{"open"}
+			filters.Status = []string{"open", "in-progress"}
 		}
 	}
 	
