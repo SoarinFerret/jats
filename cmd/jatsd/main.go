@@ -314,7 +314,7 @@ func main() {
 	}
 
 	// Setup routes and handlers with dependencies
-	mux := routes.SetupRoutes(taskService, authService)
+	mux := routes.SetupRoutes(taskService, authService, authRepo)
 
 	// Start HTTP server
 	log.Println("==============================================")

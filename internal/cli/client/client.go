@@ -1,6 +1,7 @@
 package client
 
 import (
+	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -8,10 +9,13 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
+	"golang.org/x/term"
 	"github.com/soarinferret/jats/internal/cli/config"
 	"github.com/soarinferret/jats/internal/models"
 )
@@ -135,6 +139,65 @@ func (c *Client) Login(username, password string) (*LoginResponse, error) {
 	c.apiToken = sessionToken
 
 	return &loginResp.Data, nil
+}
+
+// promptReauth prompts the user to re-authenticate when their session has expired
+func (c *Client) promptReauth() error {
+	cfg := config.GetCurrent()
+	if cfg == nil {
+		return fmt.Errorf("no configuration found")
+	}
+
+	fmt.Fprintln(os.Stderr, "\n⚠ Your session has expired. Please log in again.")
+
+	// Pre-load username from config but allow changing it
+	defaultUsername := cfg.Username
+	if defaultUsername == "" {
+		defaultUsername = ""
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Fprintf(os.Stderr, "Username [%s]: ", defaultUsername)
+	usernameInput, err := reader.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("failed to read username: %w", err)
+	}
+
+	username := strings.TrimSpace(usernameInput)
+	if username == "" {
+		username = defaultUsername
+	}
+
+	if username == "" {
+		return fmt.Errorf("username is required")
+	}
+
+	// Prompt for password
+	fmt.Fprint(os.Stderr, "Password: ")
+	passwordBytes, err := term.ReadPassword(int(syscall.Stdin))
+	if err != nil {
+		return fmt.Errorf("failed to read password: %w", err)
+	}
+	fmt.Fprintln(os.Stderr) // Add newline after password input
+
+	password := strings.TrimSpace(string(passwordBytes))
+	if password == "" {
+		return fmt.Errorf("password is required")
+	}
+
+	// Attempt login
+	resp, err := c.Login(username, password)
+	if err != nil {
+		return fmt.Errorf("re-authentication failed: %w", err)
+	}
+
+	// Save updated config
+	if err := config.Save(cfg, ""); err != nil {
+		fmt.Fprintf(os.Stderr, "Warning: Failed to save config: %v\n", err)
+	}
+
+	fmt.Fprintf(os.Stderr, "✓ Re-authenticated successfully as %s\n\n", resp.User.Username)
+	return nil
 }
 
 func (c *Client) CreateTask(req *CreateTaskRequest) (*models.Task, error) {
@@ -484,6 +547,10 @@ func (c *Client) Delete(endpoint string) error {
 }
 
 func (c *Client) request(method, endpoint string, body interface{}, response interface{}) error {
+	return c.requestWithRetry(method, endpoint, body, response, false)
+}
+
+func (c *Client) requestWithRetry(method, endpoint string, body interface{}, response interface{}, isRetry bool) error {
 	var reqBody io.Reader
 
 	if body != nil {
@@ -517,6 +584,17 @@ func (c *Client) request(method, endpoint string, body interface{}, response int
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("failed to read response: %w", err)
+	}
+
+	// Handle 401 Unauthorized - prompt for re-authentication
+	if resp.StatusCode == 401 && !isRetry && endpoint != "/api/v1/auth/login" {
+		// Prompt user to re-authenticate
+		if err := c.promptReauth(); err != nil {
+			return fmt.Errorf("re-authentication failed: %w", err)
+		}
+
+		// Retry the request once after successful re-authentication
+		return c.requestWithRetry(method, endpoint, body, response, true)
 	}
 
 	if resp.StatusCode >= 400 {
