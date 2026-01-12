@@ -194,12 +194,12 @@ func exportReportToCSV(report *client.TimeBreakdownReport, filename string) erro
 	defer writer.Flush()
 
 	// Write header row
-	header := []string{"Date", "Total Time (minutes)"}
+	header := []string{"Date", "Total Time (hours)"}
 	for _, queryName := range report.QueryNames {
-		header = append(header, queryName+" (minutes)")
+		header = append(header, queryName+" (hours)")
 		header = append(header, queryName+" Tags")
 	}
-	header = append(header, "Other (minutes)")
+	header = append(header, "Other (hours)")
 	header = append(header, "Other Tags")
 
 	if err := writer.Write(header); err != nil {
@@ -210,15 +210,15 @@ func exportReportToCSV(report *client.TimeBreakdownReport, filename string) erro
 	for _, daily := range report.DailyData {
 		row := []string{
 			daily.Date,
-			fmt.Sprintf("%d", daily.TotalTime),
+			minutesToHoursDecimal(daily.TotalTime),
 		}
 
 		for _, queryTime := range daily.QueryTimes {
-			row = append(row, fmt.Sprintf("%d", queryTime.Time))
+			row = append(row, minutesToHoursDecimal(queryTime.Time))
 			row = append(row, strings.Join(queryTime.Tags, ", "))
 		}
 
-		row = append(row, fmt.Sprintf("%d", daily.OtherTime))
+		row = append(row, minutesToHoursDecimal(daily.OtherTime))
 		row = append(row, strings.Join(daily.OtherTags, ", "))
 
 		if err := writer.Write(row); err != nil {
@@ -227,12 +227,12 @@ func exportReportToCSV(report *client.TimeBreakdownReport, filename string) erro
 	}
 
 	// Write totals row
-	totalsRow := []string{"Total", fmt.Sprintf("%d", report.Totals.TotalTime)}
+	totalsRow := []string{"Total", minutesToHoursDecimal(report.Totals.TotalTime)}
 	for _, queryTotal := range report.Totals.QueryTotals {
-		totalsRow = append(totalsRow, fmt.Sprintf("%d", queryTotal.TotalTime))
+		totalsRow = append(totalsRow, minutesToHoursDecimal(queryTotal.TotalTime))
 		totalsRow = append(totalsRow, "") // No tags in totals
 	}
-	totalsRow = append(totalsRow, fmt.Sprintf("%d", report.Totals.OtherTotal.TotalTime))
+	totalsRow = append(totalsRow, minutesToHoursDecimal(report.Totals.OtherTotal.TotalTime))
 	totalsRow = append(totalsRow, strings.Join(report.Totals.OtherTotal.Tags, ", "))
 
 	if err := writer.Write(totalsRow); err != nil {
@@ -253,6 +253,11 @@ func exportReportToCSV(report *client.TimeBreakdownReport, filename string) erro
 	}
 
 	return nil
+}
+
+func minutesToHoursDecimal(minutes int) string {
+	hours := float64(minutes) / 60.0
+	return fmt.Sprintf("%.2f", hours)
 }
 
 func init() {
