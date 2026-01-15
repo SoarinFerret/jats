@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/soarinferret/jats/internal/models"
 	"github.com/soarinferret/jats/internal/services"
@@ -61,17 +60,19 @@ func (h *SubtaskHandlers) CreateSubtask(w http.ResponseWriter, r *http.Request) 
 		SendNotFound(w, "Task not found")
 		return
 	}
-	
-	// Create subtask - this would need repository method to add subtask
+
+	// Create subtask
 	subtask := &models.Subtask{
-		TaskID:    taskID,
 		Name:      req.Name,
 		Completed: req.Completed,
-		CreatedAt: time.Now(),
-		UpdatedAt: time.Now(),
 	}
-	
-	// This is a placeholder - would need actual repository method
+
+	err = h.taskService.AddSubtask(taskID, subtask)
+	if err != nil {
+		SendInternalError(w, "Failed to create subtask")
+		return
+	}
+
 	SendCreated(w, subtask, "Subtask created successfully")
 }
 
@@ -82,34 +83,40 @@ func (h *SubtaskHandlers) UpdateSubtask(w http.ResponseWriter, r *http.Request) 
 		SendBadRequest(w, "Invalid task ID", nil)
 		return
 	}
-	
+
+	subtaskID, err := GetSubtaskIDFromPath(r)
+	if err != nil {
+		SendBadRequest(w, "Invalid subtask ID", nil)
+		return
+	}
+
 	var req SubtaskRequest
 	if err := ParseJSON(r, &req); err != nil {
 		SendBadRequest(w, "Invalid JSON", err.Error())
 		return
 	}
-	
+
 	if errors := req.Validate(); len(errors) > 0 {
 		SendValidationError(w, "Validation failed", errors)
 		return
 	}
-	
-	// Verify task exists
-	_, err = h.taskService.GetTask(taskID)
+
+	// Get existing subtask
+	subtask, err := h.taskService.GetSubtask(subtaskID)
 	if err != nil {
-		SendNotFound(w, "Task not found")
+		SendNotFound(w, "Subtask not found")
 		return
 	}
-	
-	// Update subtask - this would need repository method
-	subtask := &models.Subtask{
-		ID:        1, // placeholder
-		TaskID:    taskID,
-		Name:      req.Name,
-		Completed: req.Completed,
-		UpdatedAt: time.Now(),
+
+	// Update fields
+	subtask.Name = req.Name
+
+	err = h.taskService.UpdateSubtask(taskID, subtask)
+	if err != nil {
+		SendInternalError(w, "Failed to update subtask")
+		return
 	}
-	
+
 	SendSuccess(w, subtask, "Subtask updated successfully")
 }
 
@@ -120,23 +127,27 @@ func (h *SubtaskHandlers) ToggleSubtask(w http.ResponseWriter, r *http.Request) 
 		SendBadRequest(w, "Invalid task ID", nil)
 		return
 	}
-	
-	// Verify task exists
-	_, err = h.taskService.GetTask(taskID)
+
+	subtaskID, err := GetSubtaskIDFromPath(r)
 	if err != nil {
-		SendNotFound(w, "Task not found")
+		SendBadRequest(w, "Invalid subtask ID", nil)
 		return
 	}
-	
-	// This would need repository method to toggle subtask completion
-	subtask := &models.Subtask{
-		ID:        1, // placeholder
-		TaskID:    taskID,
-		Name:      "Example Subtask",
-		Completed: true, // toggled
-		UpdatedAt: time.Now(),
+
+	// Toggle subtask
+	err = h.taskService.ToggleSubtask(taskID, subtaskID)
+	if err != nil {
+		SendInternalError(w, "Failed to toggle subtask")
+		return
 	}
-	
+
+	// Get updated subtask to return
+	subtask, err := h.taskService.GetSubtask(subtaskID)
+	if err != nil {
+		SendInternalError(w, "Failed to retrieve updated subtask")
+		return
+	}
+
 	SendSuccess(w, subtask, "Subtask toggled successfully")
 }
 
@@ -147,14 +158,19 @@ func (h *SubtaskHandlers) DeleteSubtask(w http.ResponseWriter, r *http.Request) 
 		SendBadRequest(w, "Invalid task ID", nil)
 		return
 	}
-	
-	// Verify task exists
-	_, err = h.taskService.GetTask(taskID)
+
+	subtaskID, err := GetSubtaskIDFromPath(r)
 	if err != nil {
-		SendNotFound(w, "Task not found")
+		SendBadRequest(w, "Invalid subtask ID", nil)
 		return
 	}
-	
-	// This would need repository method to delete subtask
+
+	// Delete subtask
+	err = h.taskService.DeleteSubtask(taskID, subtaskID)
+	if err != nil {
+		SendInternalError(w, "Failed to delete subtask")
+		return
+	}
+
 	SendNoContent(w)
 }

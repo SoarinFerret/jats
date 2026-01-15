@@ -2,6 +2,7 @@ package api
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -107,6 +108,25 @@ func GetIDFromPath(r *http.Request) (uint, error) {
 	}
 	
 	return 0, nil
+}
+
+// GetSubtaskIDFromPath extracts subtask ID from URL path like /api/v1/tasks/{id}/subtasks/{subtaskId}
+func GetSubtaskIDFromPath(r *http.Request) (uint, error) {
+	path := r.URL.Path
+	parts := strings.Split(path, "/")
+
+	// Find "subtasks" and get the ID after it
+	for i, part := range parts {
+		if part == "subtasks" && i+1 < len(parts) {
+			idStr := parts[i+1]
+			// Check if this part is actually an ID and not "toggle" or other path segment
+			if id, err := strconv.ParseUint(idStr, 10, 32); err == nil {
+				return uint(id), nil
+			}
+		}
+	}
+
+	return 0, fmt.Errorf("subtask ID not found in path")
 }
 
 // ValidateTaskRequest validates task creation/update request

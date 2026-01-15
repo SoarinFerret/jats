@@ -288,12 +288,33 @@ func (s *TaskService) AddSubtask(taskID uint, subtask *models.Subtask) error {
 	return s.repo.Update(task)
 }
 
+func (s *TaskService) GetSubtask(subtaskID uint) (*models.Subtask, error) {
+	return s.repo.GetSubtask(subtaskID)
+}
+
+func (s *TaskService) UpdateSubtask(taskID uint, subtask *models.Subtask) error {
+	subtask.UpdatedAt = time.Now()
+
+	err := s.repo.UpdateSubtask(subtask)
+	if err != nil {
+		return err
+	}
+
+	// Update task's updated_at timestamp for proper sorting
+	task, err := s.repo.GetByID(taskID)
+	if err != nil {
+		return err
+	}
+	task.UpdatedAt = time.Now()
+	return s.repo.Update(task)
+}
+
 func (s *TaskService) ToggleSubtask(taskID uint, subtaskID uint) error {
 	err := s.repo.ToggleSubtask(subtaskID)
 	if err != nil {
 		return err
 	}
-	
+
 	// Update task's updated_at timestamp for proper sorting
 	task, err := s.repo.GetByID(taskID)
 	if err != nil {

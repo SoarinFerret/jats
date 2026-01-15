@@ -114,6 +114,19 @@ func (r *TaskRepository) AddSubtask(subtask *models.Subtask) error {
 	return r.db.Create(subtask).Error
 }
 
+func (r *TaskRepository) GetSubtask(subtaskID uint) (*models.Subtask, error) {
+	var subtask models.Subtask
+	err := r.db.First(&subtask, subtaskID).Error
+	if err != nil {
+		return nil, err
+	}
+	return &subtask, nil
+}
+
+func (r *TaskRepository) UpdateSubtask(subtask *models.Subtask) error {
+	return r.db.Save(subtask).Error
+}
+
 func (r *TaskRepository) ToggleSubtask(subtaskID uint) error {
 	var subtask models.Subtask
 	if err := r.db.First(&subtask, subtaskID).Error; err != nil {
