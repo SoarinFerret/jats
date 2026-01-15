@@ -49,6 +49,10 @@ type TUI struct {
 	// Layout fields
 	showSidebar bool
 	mainFlex    *tview.Flex
+
+	// Auto-refresh fields
+	refreshTicker *time.Ticker
+	stopRefresh   chan bool
 }
 
 // NewTUI creates a new TUI instance
@@ -61,6 +65,7 @@ func NewTUI() *TUI {
 		searchQuery: "",
 		searchActive: false,
 		showSidebar: true,  // Default to true, will be updated in Run()
+		stopRefresh: make(chan bool),
 	}
 }
 
@@ -93,6 +98,12 @@ func (t *TUI) Run() error {
 	t.app.SetFocus(t.tasksTable)
 	t.updateStatusForPane("tasks")
 
+	// Start auto-refresh goroutine
+	t.startAutoRefresh()
+
+	// Ensure cleanup when app stops
+	defer t.stopAutoRefresh()
+
 	// Start the application
 	return t.app.Run()
 }
@@ -122,7 +133,7 @@ func (t *TUI) setupTasksTable() {
 	t.tasksTable.SetSelectable(true, false)
 	
 	// Set headers
-	headers := []string{"✓", "Name", "Tags", "Time", "Priority", "Status"}
+	headers := []string{"✓", "Name", "Tags", "Subtasks", "Time", "Priority", "Status"}
 	for i, header := range headers {
 		cell := tview.NewTableCell(header).
 			SetTextColor(tcell.ColorYellow).
@@ -135,7 +146,7 @@ func (t *TUI) setupTasksTable() {
 // setupStatusBar creates the bottom status bar
 func (t *TUI) setupStatusBar() {
 	t.statusBar = tview.NewTextView().
-		SetText("[yellow]r[white]: Resolve | [yellow]c[white]: Comment | [yellow]t[white]: Add Time | [yellow]Enter[white]: Details | [yellow]q[white]: Quit").
+		SetText("[yellow]r[white]: Resolve | [yellow]c[white]: Comment | [yellow]s[white]: Subtasks | [yellow]t[white]: Add Time | [yellow]Enter[white]: Details | [yellow]q[white]: Quit").
 		SetDynamicColors(true)
 	t.statusBar.SetBorder(false)
 }
@@ -241,6 +252,9 @@ func (t *TUI) handleTaskPaneKeys(event *tcell.EventKey) *tcell.EventKey {
 		return nil
 	case 'c':
 		t.showCommentDialog()
+		return nil
+	case 's':
+		t.showSubtaskManager()
 		return nil
 	case 't':
 		t.showTimeDialog()
@@ -608,6 +622,18 @@ func (t *TUI) populateTasksTable() {
 			tagsStr = "-"
 		}
 
+		// Subtasks count
+		completedSubtasks := 0
+		for _, subtask := range task.Subtasks {
+			if subtask.Completed {
+				completedSubtasks++
+			}
+		}
+		subtasksStr := fmt.Sprintf("%d/%d", completedSubtasks, len(task.Subtasks))
+		if len(task.Subtasks) == 0 {
+			subtasksStr = "-"
+		}
+
 		// Priority color
 		priorityColor := ""
 		switch task.Priority {
@@ -641,6 +667,7 @@ func (t *TUI) populateTasksTable() {
 			{completeSymbol, tview.AlignCenter},
 			{task.Name, tview.AlignLeft},
 			{tagsStr, tview.AlignLeft},
+			{subtasksStr, tview.AlignCenter},
 			{timeStr, tview.AlignRight},
 			{priorityColor + string(task.Priority), tview.AlignCenter},
 			{statusColor + string(task.Status), tview.AlignCenter},
@@ -1423,6 +1450,261 @@ func (t *TUI) clearSearch() {
 	} else {
 		t.setStatus("No active search to clear")
 	}
+}
+
+// showSubtaskManager opens the subtask management modal
+func (t *TUI) showSubtaskManager() {
+	task := t.getSelectedTask()
+	if task == nil {
+		t.setStatus("No task selected")
+		return
+	}
+
+	// Create subtask list
+	subtaskList := tview.NewList()
+	subtaskList.ShowSecondaryText(false)
+	subtaskList.SetBorder(true).SetTitle(fmt.Sprintf("Subtasks for: %s", task.Name))
+
+	// Load subtasks
+	subtasks, err := t.client.GetSubtasks(task.ID)
+	if err != nil {
+		t.setStatus(fmt.Sprintf("Error loading subtasks: %v", err))
+		return
+	}
+
+	// Populate list
+	for _, subtask := range subtasks {
+		st := subtask // capture for closure
+		status := " "
+		if st.Completed {
+			status = "✓"
+		}
+		displayText := fmt.Sprintf("[%s] %s", status, st.Name)
+		subtaskList.AddItem(displayText, "", 0, nil)
+	}
+
+	// Create help text
+	helpText := tview.NewTextView().
+		SetText("[yellow]Space[white]: Toggle | [yellow]c[white]: Create | [yellow]e[white]: Edit | [yellow]d[white]: Delete | [yellow]Esc[white]: Close").
+		SetDynamicColors(true).
+		SetTextAlign(tview.AlignCenter)
+
+	// Create modal layout
+	modal := tview.NewFlex().
+		SetDirection(tview.FlexRow).
+		AddItem(subtaskList, 0, 1, true).
+		AddItem(helpText, 1, 0, false)
+
+	// Handle keyboard input
+	subtaskList.SetInputCapture(func(event *tcell.EventKey) *tcell.EventKey {
+		switch event.Key() {
+		case tcell.KeyEsc:
+			t.app.SetRoot(t.root, true)
+			t.refreshTasksOnly()
+			return nil
+		}
+
+		switch event.Rune() {
+		case ' ':
+			// Toggle subtask completion
+			idx := subtaskList.GetCurrentItem()
+			if idx >= 0 && idx < len(subtasks) {
+				_, err := t.client.ToggleSubtask(task.ID, subtasks[idx].ID)
+				if err != nil {
+					t.setStatus(fmt.Sprintf("Error toggling subtask: %v", err))
+				} else {
+					// Reload subtask manager
+					t.app.SetRoot(t.root, true)
+					t.showSubtaskManager()
+				}
+			}
+			return nil
+
+		case 'c':
+			// Create new subtask
+			t.showSubtaskCreateDialog(task.ID)
+			return nil
+
+		case 'e':
+			// Edit subtask
+			idx := subtaskList.GetCurrentItem()
+			if idx >= 0 && idx < len(subtasks) {
+				t.showSubtaskEditDialog(task.ID, &subtasks[idx])
+			} else {
+				t.setStatus("No subtask selected")
+			}
+			return nil
+
+		case 'd':
+			// Delete subtask
+			idx := subtaskList.GetCurrentItem()
+			if idx >= 0 && idx < len(subtasks) {
+				t.showSubtaskDeleteConfirm(task.ID, &subtasks[idx])
+			} else {
+				t.setStatus("No subtask selected")
+			}
+			return nil
+		}
+
+		return event
+	})
+
+	// Show modal
+	t.app.SetRoot(modal, true)
+}
+
+// showSubtaskCreateDialog shows a dialog to create a new subtask
+func (t *TUI) showSubtaskCreateDialog(taskID uint) {
+	inputField := tview.NewInputField().
+		SetLabel("Subtask name: ").
+		SetFieldWidth(60)
+
+	inputField.SetDoneFunc(func(key tcell.Key) {
+		if key == tcell.KeyEnter {
+			name := inputField.GetText()
+			if strings.TrimSpace(name) == "" {
+				t.setStatus("Subtask name cannot be empty")
+				t.app.SetRoot(t.root, true)
+				t.showSubtaskManager()
+				return
+			}
+
+			_, err := t.client.CreateSubtask(taskID, name)
+			if err != nil {
+				t.setStatus(fmt.Sprintf("Error creating subtask: %v", err))
+			}
+			t.app.SetRoot(t.root, true)
+			t.showSubtaskManager()
+		} else if key == tcell.KeyEscape {
+			t.app.SetRoot(t.root, true)
+			t.showSubtaskManager()
+		}
+	})
+
+	// Create a flex container for the input
+	flex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(tview.NewTextView().SetText("Enter subtask name:").SetTextAlign(tview.AlignCenter), 1, 0, false).
+		AddItem(tview.NewTextView(), 1, 0, false). // Spacer
+		AddItem(inputField, 1, 0, true).
+		AddItem(tview.NewTextView(), 1, 0, false). // Spacer
+		AddItem(tview.NewTextView().SetText("Enter: Create | Escape: Cancel").SetTextAlign(tview.AlignCenter), 1, 0, false)
+
+	flex.SetBorder(true).SetTitle("Create Subtask")
+
+	// Create a centered modal
+	modalContainer := tview.NewFlex().
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(flex, 7, 0, true).
+			AddItem(nil, 0, 1, false), 80, 0, true).
+		AddItem(nil, 0, 1, false)
+
+	t.app.SetRoot(modalContainer, true)
+	t.app.SetFocus(inputField)
+}
+
+// showSubtaskEditDialog shows a dialog to edit a subtask
+func (t *TUI) showSubtaskEditDialog(taskID uint, subtask *client.Subtask) {
+	inputField := tview.NewInputField().
+		SetLabel("Subtask name: ").
+		SetText(subtask.Name).
+		SetFieldWidth(60)
+
+	inputField.SetDoneFunc(func(key tcell.Key) {
+		if key == tcell.KeyEnter {
+			name := inputField.GetText()
+			if strings.TrimSpace(name) == "" {
+				t.setStatus("Subtask name cannot be empty")
+				t.app.SetRoot(t.root, true)
+				t.showSubtaskManager()
+				return
+			}
+
+			_, err := t.client.UpdateSubtask(taskID, subtask.ID, name)
+			if err != nil {
+				t.setStatus(fmt.Sprintf("Error updating subtask: %v", err))
+			}
+			t.app.SetRoot(t.root, true)
+			t.showSubtaskManager()
+		} else if key == tcell.KeyEscape {
+			t.app.SetRoot(t.root, true)
+			t.showSubtaskManager()
+		}
+	})
+
+	// Create a flex container for the input
+	flex := tview.NewFlex().SetDirection(tview.FlexRow).
+		AddItem(tview.NewTextView().SetText("Edit subtask name:").SetTextAlign(tview.AlignCenter), 1, 0, false).
+		AddItem(tview.NewTextView(), 1, 0, false). // Spacer
+		AddItem(inputField, 1, 0, true).
+		AddItem(tview.NewTextView(), 1, 0, false). // Spacer
+		AddItem(tview.NewTextView().SetText("Enter: Save | Escape: Cancel").SetTextAlign(tview.AlignCenter), 1, 0, false)
+
+	flex.SetBorder(true).SetTitle("Edit Subtask")
+
+	// Create a centered modal
+	modalContainer := tview.NewFlex().
+		AddItem(nil, 0, 1, false).
+		AddItem(tview.NewFlex().SetDirection(tview.FlexRow).
+			AddItem(nil, 0, 1, false).
+			AddItem(flex, 7, 0, true).
+			AddItem(nil, 0, 1, false), 80, 0, true).
+		AddItem(nil, 0, 1, false)
+
+	t.app.SetRoot(modalContainer, true)
+	t.app.SetFocus(inputField)
+}
+
+// showSubtaskDeleteConfirm shows a confirmation dialog for deleting a subtask
+func (t *TUI) showSubtaskDeleteConfirm(taskID uint, subtask *client.Subtask) {
+	modal := tview.NewModal().
+		SetText(fmt.Sprintf("Delete subtask '%s'?", subtask.Name)).
+		AddButtons([]string{"Delete", "Cancel"}).
+		SetDoneFunc(func(buttonIndex int, buttonLabel string) {
+			if buttonLabel == "Delete" {
+				err := t.client.DeleteSubtask(taskID, subtask.ID)
+				if err != nil {
+					t.setStatus(fmt.Sprintf("Error deleting subtask: %v", err))
+					t.app.SetRoot(t.root, true)
+				} else {
+					t.app.SetRoot(t.root, true)
+					t.showSubtaskManager()
+				}
+			} else {
+				t.app.SetRoot(t.root, true)
+				t.showSubtaskManager()
+			}
+		})
+
+	t.app.SetRoot(modal, true)
+}
+
+// startAutoRefresh starts a background goroutine that refreshes the task list every minute
+func (t *TUI) startAutoRefresh() {
+	t.refreshTicker = time.NewTicker(1 * time.Minute)
+
+	go func() {
+		for {
+			select {
+			case <-t.refreshTicker.C:
+				// Queue update to run on main UI thread
+				t.app.QueueUpdateDraw(func() {
+					t.refreshTasksOnly()
+				})
+			case <-t.stopRefresh:
+				return
+			}
+		}
+	}()
+}
+
+// stopAutoRefresh stops the auto-refresh goroutine and cleans up resources
+func (t *TUI) stopAutoRefresh() {
+	if t.refreshTicker != nil {
+		t.refreshTicker.Stop()
+	}
+	close(t.stopRefresh)
 }
 
 func init() {

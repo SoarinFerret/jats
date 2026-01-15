@@ -239,6 +239,7 @@ type Task struct {
 	UpdatedAt   time.Time         `json:"updated_at"`
 	TimeEntries []TimeEntry       `json:"time_entries"`
 	Comments    []Comment         `json:"comments"`
+	Subtasks    []Subtask         `json:"subtasks"`
 }
 
 type TimeEntry struct {
@@ -253,6 +254,15 @@ type Comment struct {
 	Content   string    `json:"content"`
 	IsPrivate bool      `json:"is_private"`
 	CreatedAt time.Time `json:"created_at"`
+}
+
+type Subtask struct {
+	ID        uint      `json:"id"`
+	TaskID    uint      `json:"task_id"`
+	Name      string    `json:"name"`
+	Completed bool      `json:"completed"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type SavedQuery struct {
@@ -486,6 +496,99 @@ func (c *Client) AddComment(taskID uint, req *AddCommentRequest) error {
 	}
 	
 	return nil
+}
+
+// GetSubtasks retrieves all subtasks for a task
+func (c *Client) GetSubtasks(taskID uint) ([]Subtask, error) {
+	var apiResp struct {
+		Success bool      `json:"success"`
+		Data    []Subtask `json:"data"`
+		Message string    `json:"message"`
+	}
+
+	err := c.get(fmt.Sprintf("/api/v1/tasks/%d/subtasks", taskID), &apiResp)
+	if err != nil {
+		return nil, err
+	}
+
+	if !apiResp.Success {
+		return nil, fmt.Errorf("get subtasks failed: %s", apiResp.Message)
+	}
+
+	return apiResp.Data, nil
+}
+
+// CreateSubtask creates a new subtask for a task
+func (c *Client) CreateSubtask(taskID uint, name string) (*Subtask, error) {
+	req := map[string]interface{}{
+		"name": name,
+	}
+
+	var apiResp struct {
+		Success bool     `json:"success"`
+		Data    Subtask  `json:"data"`
+		Message string   `json:"message"`
+	}
+
+	err := c.post(fmt.Sprintf("/api/v1/tasks/%d/subtasks", taskID), req, &apiResp)
+	if err != nil {
+		return nil, err
+	}
+
+	if !apiResp.Success {
+		return nil, fmt.Errorf("create subtask failed: %s", apiResp.Message)
+	}
+
+	return &apiResp.Data, nil
+}
+
+// UpdateSubtask updates a subtask's name
+func (c *Client) UpdateSubtask(taskID, subtaskID uint, name string) (*Subtask, error) {
+	req := map[string]interface{}{
+		"name": name,
+	}
+
+	var apiResp struct {
+		Success bool     `json:"success"`
+		Data    Subtask  `json:"data"`
+		Message string   `json:"message"`
+	}
+
+	err := c.put(fmt.Sprintf("/api/v1/tasks/%d/subtasks/%d", taskID, subtaskID), req, &apiResp)
+	if err != nil {
+		return nil, err
+	}
+
+	if !apiResp.Success {
+		return nil, fmt.Errorf("update subtask failed: %s", apiResp.Message)
+	}
+
+	return &apiResp.Data, nil
+}
+
+// ToggleSubtask toggles a subtask's completion status
+func (c *Client) ToggleSubtask(taskID, subtaskID uint) (*Subtask, error) {
+	var apiResp struct {
+		Success bool     `json:"success"`
+		Data    Subtask  `json:"data"`
+		Message string   `json:"message"`
+	}
+
+	err := c.patch(fmt.Sprintf("/api/v1/tasks/%d/subtasks/%d/toggle", taskID, subtaskID), nil, &apiResp)
+	if err != nil {
+		return nil, err
+	}
+
+	if !apiResp.Success {
+		return nil, fmt.Errorf("toggle subtask failed: %s", apiResp.Message)
+	}
+
+	return &apiResp.Data, nil
+}
+
+// DeleteSubtask deletes a subtask
+func (c *Client) DeleteSubtask(taskID, subtaskID uint) error {
+	return c.delete(fmt.Sprintf("/api/v1/tasks/%d/subtasks/%d", taskID, subtaskID))
 }
 
 type UpdateTaskRequest struct {
